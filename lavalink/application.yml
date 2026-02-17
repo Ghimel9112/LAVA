@@ -1,0 +1,104 @@
+server: # REST and WS server
+  port: 2333
+  address: 0.0.0.0
+  http2:
+    enabled: false # Whether to enable HTTP/2 support
+lavalink:
+  server:
+    password: "youshallnotpass"
+    sources:
+      # The default Youtube source is now deprecated and won't receive further updates.
+      # Please use https://github.com/lavalink-devs/youtube-source#plugin instead.
+      youtube: false
+      bandcamp: true
+      soundcloud: true
+      twitch: true
+      vimeo: true
+      http: true
+      local: false
+    filters: # All filters are enabled by default
+
+      volume: true
+      equalizer: true
+      karaoke: true
+      timescale: true
+      tremolo: true
+      vibrato: true
+      distortion: true
+      rotation: true
+      channelMix: true
+      lowPass: true
+    bufferDurationMs: 400
+    frameBufferDurationMs: 5000
+    opusEncodingQuality: 10 # Quality of opus encoding. Valid values are 0 to 10.
+    resamplingQuality: LOW # Quality of resampling operations. Valid values are LOW, MEDIUM, HIGH, and LINEAR_SINC.
+    trackStuckThresholdMs: 10000 # The threshold for how long a track can be stuck in the same position before it is forced to finish on the current player.
+    useSeekGhosting: true # Seek ghosting is the effect where whilst a seek is in progress, the audio buffer is read from until empty, or until seek is ready.
+    youtubePlaylistLoadLimit: 6 # Number of pages to load for one playlist
+    playerUpdateInterval: 5 # How frequently to send player updates to clients, in seconds
+    youtubeSearchEnabled: true
+    soundcloudSearchEnabled: true
+    gc-warnings: true
+    #ratelimit:
+      #ipBlocks: ["1.0.0.0/8", "..."] # list of ip blocks
+      #excludedIps: ["...", "..."] # ips which should be explicit excluded from usage by lavalink
+      #strategy: "RotateOnBan" # RotateOnBan | LoadBalance | NanoSwitch | RotatingNanoSwitch
+      #searchTriggersFail: true # Whether a search 429 should trigger marking the ip as failing
+      #retryLimit: -1 # -1 = use default lavaplayer value | 0 = infinity | >0 = retry will happen this amount times
+    #youtubeConfig: # Required for avoiding 429s when using YouTube source
+      #email: "" # Email of Google Account
+      #password: "" # Password of Google Account
+      #PO_Token: "" # po_token_hex from YouTube session
+      #visitorData: "" # visitor_data from YouTube session
+
+metrics:
+  prometheus:
+    enabled: false
+    endpoint: /metrics
+
+sentry:
+  dsn: ""
+  environment: ""
+#  tags:
+#    some_key: some_value
+#    another_key: another_value
+
+logging:
+  file:
+    path: ./logs/
+  level:
+    root: INFO
+    lavalink: INFO
+
+  request:
+    enabled: true
+    includeClientInfo: true
+    includeHeaders: false
+    includeQueryString: true
+    includePayload: true
+    maxPayloadLength: 10000
+
+
+
+plugins:
+  lavasrc:
+    providers: # Custom providers for track loading. This is the default
+      - "ytsearch:\"%ISRC%\"" # Will be ignored if track does not have an ISRC. See https://en.wikipedia.org/wiki/International_Standard_Recording_Code
+      - "ytsearch:%QUERY%" # Will be used if track has no ISRC or no track could be found for the ISRC
+      #  you can add multiple other fallback sources here
+      - "scsearch:%QUERY%"
+      - "spsearch:%QUERY%"
+    sources:
+      spotify: true # Enable Spotify source
+      applemusic: false # Enable Apple Music source
+      deezer: false # Enable Deezer source
+      yandexmusic: false # Enable Yandex Music source
+      flow: false # Enable Flow source
+      youtube: false # Enable YouTube search source (https://github.com/topi314/LavaSrc#youtube)
+    spotify:
+      clientId: "ec3cd0ceb75a4170908e7d9f1dc45b6a"
+      clientSecret: "a8421e57a937475c813c81103b7271e5"
+      countryCode: "US" # the country code you want to use for filtering the artists top tracks. See https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2
+      playlistLoadLimit: 6 # The number of pages to load for playlists.
+      albumLoadLimit: 6 # The number of pages to load for albums.
+
