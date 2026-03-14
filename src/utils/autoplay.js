@@ -64,9 +64,11 @@ async function handleAutoplay(client, player, track, queue) {
 
                 const res = await node.rest.resolve(query);
 
-                if (res && res.data) {
+                // Check for loadType 'empty' or 'error' to consider it a failure
+                const loadType = res?.loadType ? res.loadType.toLowerCase() : '';
+                if (loadType !== 'empty' && loadType !== 'error' && res && res.data) {
                     let tracks = Array.isArray(res.data) ? res.data : (res.data.tracks || []);
-                    tracks = tracks.filter(t => t.info.identifier !== identifier);
+                    tracks = tracks.filter(t => t && t.info && t.info.identifier !== identifier);
 
                     if (tracks.length > 0) {
                         candidates = tracks;
@@ -111,9 +113,10 @@ async function handleAutoplay(client, player, track, queue) {
 
                 const res = await node.rest.resolve(query);
 
-                if (res && res.data) {
+                const loadType = res?.loadType ? res.loadType.toLowerCase() : '';
+                if (loadType !== 'empty' && loadType !== 'error' && res && res.data) {
                     let tracks = Array.isArray(res.data) ? res.data : (res.data.tracks || []);
-                    tracks = tracks.filter(t => t.info.identifier !== identifier);
+                    tracks = tracks.filter(t => t && t.info && t.info.identifier !== identifier);
 
                     if (tracks.length > 0) {
                         candidates = tracks;
@@ -122,6 +125,28 @@ async function handleAutoplay(client, player, track, queue) {
                 }
             } catch (e) {
                 console.warn(`[Autoplay] Strategy 3 (Artist) failed: ${e.message}`);
+            }
+        }
+
+        // -----------------------------------------------------------------
+        // STRATEGY 4: Final Safe Mode Catch (SoundCloud Artist Search)
+        // -----------------------------------------------------------------
+        if (!premium && candidates.length === 0 && author) {
+            try {
+                const query = `scsearch:${author}`.trim();
+                const res = await node.rest.resolve(query);
+                const loadType = res?.loadType ? res.loadType.toLowerCase() : '';
+
+                if (loadType !== 'empty' && loadType !== 'error' && res && res.data) {
+                    let tracks = Array.isArray(res.data) ? res.data : (res.data.tracks || []);
+                    tracks = tracks.filter(t => t && t.info && t.info.identifier !== identifier);
+                    if (tracks.length > 0) {
+                        candidates = tracks;
+                        console.log(`[Autoplay] Strategy 4 (SoundCloud Artist) found ${candidates.length} candidates.`);
+                    }
+                }
+            } catch (e) {
+                console.warn(`[Autoplay] Strategy 4 (Artist) failed: ${e.message}`);
             }
         }
 

@@ -379,8 +379,9 @@ module.exports = {
 
             // Strategy 1: Spotify search with full query
             const spResult = await node.rest.resolve(`spsearch:${audioQuery}`);
-            if (spResult && spResult.data) {
-                const spTracks = (Array.isArray(spResult.data) ? spResult.data : [spResult.data])
+            const spLoadType = spResult?.loadType ? spResult.loadType.toLowerCase() : '';
+            if (spLoadType !== 'empty' && spLoadType !== 'error' && spResult && spResult.data) {
+                const spTracks = (Array.isArray(spResult.data) ? spResult.data : (spResult.data.tracks || []))
                     .filter(t => t && t.info && t.info.title);
                 candidates.push(...spTracks.slice(0, 10));
             }
@@ -388,8 +389,9 @@ module.exports = {
             // Strategy 2: If we have separate title/author, also try just the title
             if (songTitle && songAuthor && candidates.length < 5) {
                 const spResult2 = await node.rest.resolve(`spsearch:${songTitle}`);
-                if (spResult2 && spResult2.data) {
-                    const spTracks2 = (Array.isArray(spResult2.data) ? spResult2.data : [spResult2.data])
+                const spLoadType2 = spResult2?.loadType ? spResult2.loadType.toLowerCase() : '';
+                if (spLoadType2 !== 'empty' && spLoadType2 !== 'error' && spResult2 && spResult2.data) {
+                    const spTracks2 = (Array.isArray(spResult2.data) ? spResult2.data : (spResult2.data.tracks || []))
                         .filter(t => t && t.info && t.info.title);
                     candidates.push(...spTracks2.slice(0, 5));
                 }
@@ -398,8 +400,9 @@ module.exports = {
             // Strategy 3: Fallback SoundCloud if Spotify gave nothing
             if (candidates.length === 0) {
                 const scResult = await node.rest.resolve(`scsearch:${audioQuery}`);
-                if (scResult && scResult.data) {
-                    const scTracks = (Array.isArray(scResult.data) ? scResult.data : [scResult.data])
+                const scLoadType = scResult?.loadType ? scResult.loadType.toLowerCase() : '';
+                if (scLoadType !== 'empty' && scLoadType !== 'error' && scResult && scResult.data) {
+                    const scTracks = (Array.isArray(scResult.data) ? scResult.data : (scResult.data.tracks || []))
                         .filter(t => t && t.info && t.info.title);
                     candidates.push(...scTracks.slice(0, 10));
                 }
