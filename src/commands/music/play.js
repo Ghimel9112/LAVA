@@ -583,7 +583,16 @@ module.exports = {
             player.on('exception', d => {
                 const q = interaction.client.queue.get(interaction.guild.id);
                 if (q) {
-                    q.textChannel.send({ embeds: [new EmbedBuilder().setColor('Red').setDescription(`Error: ${d.exception.message}`)] });
+                    const errMsg = d.exception?.message || '';
+                    let userMessage;
+
+                    if (errMsg.includes('All clients failed to load the item')) {
+                        userMessage = '⚠️ This track cannot be played right now. The bot requires an update that is not yet available. Please try again later or use a different song.';
+                    } else {
+                        userMessage = `Error: ${errMsg}`;
+                    }
+
+                    q.textChannel.send({ embeds: [new EmbedBuilder().setColor('Red').setDescription(userMessage)] });
                     // Just stop the track. This triggers 'end' event, which handles queue shift & autoplay.
                     q.player.stopTrack();
                 }
