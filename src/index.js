@@ -15,6 +15,7 @@ const client = new Client({
 
 client.commands = new Collection();
 client.queue = new Map();
+client.youtubeDisabled = false; // Global toggle for YouTube sources (owner command: /toggleyt)
 
 // Lavalink Nodes
 const Nodes = [{

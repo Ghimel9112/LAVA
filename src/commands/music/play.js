@@ -257,6 +257,15 @@ module.exports = {
         const node = interaction.client.shoukaku.getIdealNode();
         if (!node) return interaction.editReply('No Lavalink node is available.');
 
+        // Block YouTube URLs if YouTube sources are globally disabled
+        const isYouTubeUrl = /^https?:\/\/(www\.)?(youtube\.com|youtu\.be|music\.youtube\.com)/.test(query);
+        if (interaction.client.youtubeDisabled && isYouTubeUrl) {
+            const embed = new EmbedBuilder()
+                .setColor('Red')
+                .setDescription('⚠️ YouTube sources are temporarily disabled. The bot requires an update that is not yet available. Please use a song name, Spotify link, or SoundCloud link instead.');
+            return interaction.editReply({ embeds: [embed] });
+        }
+
         // 1. RESOLVE SEARCH
         let searchResult;
         const isPremium = db.isPremium(interaction.guild.id);
@@ -315,8 +324,8 @@ module.exports = {
                 }
             }
 
-            // Fallback for text search if direct resolve failed
-            if (!searchResult && !/^https?:\/\//.test(query)) {
+            // Fallback for text search if direct resolve failed (skip if YouTube is disabled)
+            if (!searchResult && !/^https?:\/\//.test(query) && !interaction.client.youtubeDisabled) {
                 const ytRes = await node.rest.resolve(`ytsearch:${query}`);
                 if (ytRes?.data) {
                     const tracks = Array.isArray(ytRes.data) ? ytRes.data : (ytRes.data.tracks || []);
