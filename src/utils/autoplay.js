@@ -15,6 +15,8 @@ async function handleAutoplay(client, player, track, queue) {
         const node = client.shoukaku.getIdealNode();
         if (!node) return;
 
+        const ytDisabled = client.youtubeDisabled || false;
+
         const guildId = player.guildId;
         const premium = isPremium(guildId);
 
@@ -29,7 +31,7 @@ async function handleAutoplay(client, player, track, queue) {
         // -----------------------------------------------------------------
         // STRATEGY 1: YouTube Mix (PREMIUM ONLY)
         // -----------------------------------------------------------------
-        if (premium) {
+        if (premium && !ytDisabled) {
             try {
                 const mixURL = `https://www.youtube.com/watch?v=${identifier}&list=RD${identifier}`;
                 const res = await node.rest.resolve(mixURL);
@@ -50,7 +52,7 @@ async function handleAutoplay(client, player, track, queue) {
                 console.warn(`[Autoplay] Strategy 1 (Mix) failed: ${e.message}`);
             }
         } else {
-            console.log('[Autoplay] Skipping Strategy 1 (Mix) because Safe Mode is enabled.');
+            console.log(`[Autoplay] Skipping Strategy 1 (Mix) - ${ytDisabled ? 'YouTube disabled' : 'Safe Mode enabled'}.`);
         }
 
         // -----------------------------------------------------------------
@@ -59,7 +61,7 @@ async function handleAutoplay(client, player, track, queue) {
         if (candidates.length === 0) {
             try {
                 // If Safe Mode (Non-Premium), use Spotify/SoundCloud. If Premium, use YouTube.
-                const searchPrefix = premium ? 'ytsearch:' : 'spsearch:';
+                const searchPrefix = (premium && !ytDisabled) ? 'ytsearch:' : 'spsearch:';
                 const query = `${searchPrefix}${author} - ${title}`;
 
                 const res = await node.rest.resolve(query);
@@ -106,7 +108,7 @@ async function handleAutoplay(client, player, track, queue) {
         // -----------------------------------------------------------------
         if (candidates.length === 0) {
             try {
-                const searchPrefix = premium ? 'ytsearch:' : 'spsearch:';
+                const searchPrefix = (premium && !ytDisabled) ? 'ytsearch:' : 'spsearch:';
                 // For Spotify, "top tracks" or just the artist name is usually better than "official audio"
                 const suffix = premium ? 'official audio' : '';
                 const query = `${searchPrefix}${author} ${suffix}`.trim();
