@@ -110,7 +110,7 @@ async function handleAutoplay(client, player, track, queue) {
             try {
                 const searchPrefix = (premium && !ytDisabled) ? 'ytsearch:' : 'spsearch:';
                 // For Spotify, "top tracks" or just the artist name is usually better than "official audio"
-                const suffix = premium ? 'official audio' : '';
+                const suffix = (premium && !ytDisabled) ? 'official audio' : '';
                 const query = `${searchPrefix}${author} ${suffix}`.trim();
 
                 const res = await node.rest.resolve(query);
