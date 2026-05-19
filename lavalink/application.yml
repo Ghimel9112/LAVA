@@ -114,4 +114,5 @@ plugins:
       - TVHTML5EMBEDDED
     oauth:
       enabled: true
+      refreshToken: "1//04agXpwQ64koLCgYIARAAGAQSNwF-L9IrQFNITZPIq-D8DwK9X_EJPBIa0zXnQMCJEHiiuInnV1wJKXXZnikyFIxIdTpKjmkpw7U"
 
