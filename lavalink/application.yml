@@ -83,8 +83,8 @@ logging:
 plugins:
   lavasrc:
     providers: # Custom providers for track loading. This is the default
-      # - "ytsearch:\"%ISRC%\"" # Temporarily disabled because YouTube is blocking requests with 403
-      # - "ytsearch:%QUERY%" # Temporarily disabled because YouTube is blocking requests with 403
+      - "ytsearch:\"%ISRC%\""
+      - "ytsearch:%QUERY%"
       #  you can add multiple other fallback sources here
       - "scsearch:%QUERY%"
       - "spsearch:%QUERY%"
@@ -101,4 +101,17 @@ plugins:
       countryCode: "US" # the country code you want to use for filtering the artists top tracks. See https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2
       playlistLoadLimit: 6 # The number of pages to load for playlists.
       albumLoadLimit: 6 # The number of pages to load for albums.
+
+  youtube:
+    enabled: true
+    allowSearch: true
+    allowDirectVideoIds: true
+    allowDirectPlaylistIds: true
+    clients:
+      - MUSIC
+      - ANDROID_VR
+      - WEB
+      - TVHTML5EMBEDDED
+    oauth:
+      enabled: true
 
