@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -19,7 +19,7 @@ module.exports = {
         if (interaction.user.id !== process.env.OWNER_ID) {
             return interaction.reply({
                 content: '❌ This command is restricted to the bot owner.',
-                ephemeral: true
+                flags: MessageFlags.Ephemeral
             });
         }
 
@@ -30,7 +30,7 @@ module.exports = {
         if (!targetChannel.isTextBased()) {
             return interaction.reply({
                 content: '❌ That channel is not a text-based channel.',
-                ephemeral: true
+                flags: MessageFlags.Ephemeral
             });
         }
 
@@ -38,7 +38,7 @@ module.exports = {
         if (botMember && !targetChannel.permissionsFor(botMember).has(PermissionFlagsBits.SendMessages)) {
             return interaction.reply({
                 content: `❌ I don't have permission to send messages in ${targetChannel}.`,
-                ephemeral: true
+                flags: MessageFlags.Ephemeral
             });
         }
 
@@ -49,12 +49,12 @@ module.exports = {
                 .setColor(0x5865F2)
                 .setDescription(`✅ Message sent in ${targetChannel}.`);
 
-            return interaction.reply({ embeds: [confirmEmbed], ephemeral: true });
+            return interaction.reply({ embeds: [confirmEmbed], flags: MessageFlags.Ephemeral });
         } catch (error) {
             console.error('[SAY] Failed to send message:', error);
             return interaction.reply({
                 content: `❌ Failed to send message: \`${error.message}\``,
-                ephemeral: true
+                flags: MessageFlags.Ephemeral
             });
         }
     }
