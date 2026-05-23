@@ -109,10 +109,12 @@ plugins:
     allowDirectPlaylistIds: true
     clients:
       - MUSIC
-      - ANDROID_VR
-      - WEB
       - TVHTML5EMBEDDED
+      - ANDROID_TESTSUITE
+      - IOS
     oauth:
       enabled: true
-      refreshToken: "1//04agXpwQ64koLCgYIARAAGAQSNwF-L9IrQFNITZPIq-D8DwK9X_EJPBIa0zXnQMCJEHiiuInnV1wJKXXZnikyFIxIdTpKjmkpw7U"
+      # Start Lavalink without a refreshToken — check logs for a Google auth URL.
+      # After authorizing, paste the new refreshToken here.
+      # refreshToken: ""
 
