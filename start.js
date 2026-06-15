@@ -65,8 +65,13 @@ async function start() {
     // 1. Generate new YouTube poToken
     log('TokenGen', c.cyan, 'Generating fresh YouTube poToken to bypass bot detection...');
     try {
-        // Run the generator (make sure the user is using cmd so it works on windows/linux seamlessly)
-        const tokenOutput = execSync(process.platform === 'win32' ? 'cmd.exe /c npx -y youtube-po-token-generator' : 'npx -y youtube-po-token-generator').toString();
+        // Run the generator with a 60s timeout so it can never hang forever on pm2 restart
+        const tokenOutput = execSync(
+            process.platform === 'win32'
+                ? 'cmd.exe /c npx -y youtube-po-token-generator'
+                : 'npx -y youtube-po-token-generator',
+            { timeout: 60000 } // Kill the process after 60 seconds
+        ).toString();
         const visitorMatch = tokenOutput.match(/VisitorData:\s*(.+)/);
         const tokenMatch = tokenOutput.match(/PO Token:\s*(.+)/);
 
@@ -89,7 +94,11 @@ async function start() {
             log('TokenGen', c.yellow, 'Failed to parse poToken output. Proceeding with old token...');
         }
     } catch (err) {
-        log('TokenGen', c.red, 'Failed to generate poToken: ' + err.message);
+        if (err.signal === 'SIGTERM' || err.status === null) {
+            log('TokenGen', c.yellow, 'poToken generation timed out after 60s. Proceeding with old token...');
+        } else {
+            log('TokenGen', c.red, 'Failed to generate poToken: ' + err.message);
+        }
     }
 
     // 2. Start Lavalink

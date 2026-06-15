@@ -3,6 +3,10 @@ const ytdl = require('@distube/ytdl-core');
 const db = require('../../utils/db');
 const handleAutoplay = require('../../utils/autoplay');
 
+// Per-guild exception cooldown to prevent message spam
+// Map<guildId, { lastSentAt: number, consecutiveFails: number }>
+const exceptionState = new Map();
+
 // ---------------------------------------------------------
 // HELPER FUNCTIONS
 // ---------------------------------------------------------
@@ -490,6 +494,9 @@ module.exports = {
                 if (!currentQueue || !currentQueue.songs[0]) return;
                 const currentTrack = currentQueue.songs[0];
 
+                // A track started successfully — reset the exception failure counter
+                exceptionState.delete(interaction.guild.id);
+
                 if (currentQueue.lastMessage) {
                     try { await currentQueue.lastMessage.delete(); } catch (e) { }
                 }
@@ -589,22 +596,55 @@ module.exports = {
                     interaction.client.queue.delete(interaction.guild.id);
                 }
             });
-            player.on('exception', d => {
+            player.on('exception', async d => {
                 const q = interaction.client.queue.get(interaction.guild.id);
-                if (q) {
+                if (!q) return;
+
+                const guildId = interaction.guild.id;
+                const now = Date.now();
+                const COOLDOWN_MS = 5000; // Min 5s between exception messages per guild
+                const MAX_CONSECUTIVE_FAILS = 3;
+
+                // Retrieve or initialize exception state for this guild
+                let state = exceptionState.get(guildId) || { lastSentAt: 0, consecutiveFails: 0 };
+                state.consecutiveFails++;
+                exceptionState.set(guildId, state);
+
+                // If too many consecutive failures, give up and disconnect
+                if (state.consecutiveFails >= MAX_CONSECUTIVE_FAILS) {
+                    exceptionState.delete(guildId);
+                    try {
+                        if (q.lastMessage) { try { await q.lastMessage.delete(); } catch (e) {} }
+                        await q.textChannel.send({
+                            embeds: [new EmbedBuilder().setColor('Red')
+                                .setDescription('⚠️ Multiple tracks failed to load. Stopping playback to avoid spam. Please try a different song or source.')]
+                        });
+                    } catch (e) {}
+                    interaction.client.shoukaku.leaveVoiceChannel(guildId);
+                    interaction.client.queue.delete(guildId);
+                    return;
+                }
+
+                // Only send a message if the cooldown has passed
+                if (now - state.lastSentAt >= COOLDOWN_MS) {
+                    state.lastSentAt = now;
+                    exceptionState.set(guildId, state);
+
                     const errMsg = d.exception?.message || '';
                     let userMessage;
-
                     if (errMsg.includes('All clients failed to load the item')) {
                         userMessage = '⚠️ This track cannot be played right now. The bot requires an update that is not yet available. Please try again later or use a different song.';
                     } else {
-                        userMessage = `Error: ${errMsg}`;
+                        userMessage = `⚠️ Error: ${errMsg}`;
                     }
 
-                    q.textChannel.send({ embeds: [new EmbedBuilder().setColor('Red').setDescription(userMessage)] });
-                    // Just stop the track. This triggers 'end' event, which handles queue shift & autoplay.
-                    q.player.stopTrack();
+                    try {
+                        await q.textChannel.send({ embeds: [new EmbedBuilder().setColor('Red').setDescription(userMessage)] });
+                    } catch (e) {}
                 }
+
+                // Skip to the next track (triggers 'end', which will reset consecutiveFails on success)
+                q.player.stopTrack();
             });
 
             const newQueue = {

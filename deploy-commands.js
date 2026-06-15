@@ -10,11 +10,19 @@ const commandsPath = path.join(__dirname, 'src', 'commands');
 const commandFolders = fs.readdirSync(commandsPath);
 
 for (const folder of commandFolders) {
-    const folderPath = path.join(commandsPath, folder);
+    const folderPath = path.normalize(path.join(commandsPath, folder));
+    if (!folderPath.startsWith(commandsPath + path.sep) && folderPath !== commandsPath) {
+        console.log(`[WARNING] Invalid path specified: ${folderPath}`);
+        continue;
+    }
     const commandFiles = fs.readdirSync(folderPath).filter(file => file.endsWith('.js'));
 
     for (const file of commandFiles) {
-        const filePath = path.join(folderPath, file);
+        const filePath = path.normalize(path.join(folderPath, file));
+        if (!filePath.startsWith(folderPath + path.sep) && filePath !== folderPath) {
+            console.log(`[WARNING] Invalid path specified: ${filePath}`);
+            continue;
+        }
         const command = require(filePath);
 
         if ('data' in command && 'execute' in command) {
