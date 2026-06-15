@@ -62,44 +62,8 @@ async function start() {
     console.log(`${c.bold}${c.cyan}        Discord Bot Launcher${c.reset}`);
     console.log(`${c.bold}${c.cyan}═══════════════════════════════════════${c.reset}\n`);
 
-    // 1. Generate new YouTube poToken
-    log('TokenGen', c.cyan, 'Generating fresh YouTube poToken to bypass bot detection...');
-    try {
-        // Run the generator with a 60s timeout so it can never hang forever on pm2 restart
-        const tokenOutput = execSync(
-            process.platform === 'win32'
-                ? 'cmd.exe /c npx -y youtube-po-token-generator'
-                : 'npx -y youtube-po-token-generator',
-            { timeout: 60000 } // Kill the process after 60 seconds
-        ).toString();
-        const visitorMatch = tokenOutput.match(/VisitorData:\s*(.+)/);
-        const tokenMatch = tokenOutput.match(/PO Token:\s*(.+)/);
-
-        if (visitorMatch && tokenMatch) {
-            const visitorData = visitorMatch[1].trim();
-            const poToken = tokenMatch[1].trim();
-            log('TokenGen', c.green, 'Successfully generated new poToken!');
-
-            // Update application.yml
-            const ymlPath = path.join(LAVA_DIR, 'application.yml');
-            let ymlContent = fs.readFileSync(ymlPath, 'utf8');
-            
-            // Regex to replace the token and visitorData
-            ymlContent = ymlContent.replace(/token:\s*".*"/, `token: "${poToken}"`);
-            ymlContent = ymlContent.replace(/visitorData:\s*".*"/, `visitorData: "${visitorData}"`);
-            
-            fs.writeFileSync(ymlPath, ymlContent);
-            log('TokenGen', c.green, 'Updated Lavalink configuration with new token.');
-        } else {
-            log('TokenGen', c.yellow, 'Failed to parse poToken output. Proceeding with old token...');
-        }
-    } catch (err) {
-        if (err.signal === 'SIGTERM' || err.status === null) {
-            log('TokenGen', c.yellow, 'poToken generation timed out after 60s. Proceeding with old token...');
-        } else {
-            log('TokenGen', c.red, 'Failed to generate poToken: ' + err.message);
-        }
-    }
+    // 1. (Skipped) Using Lavalink OAuth instead of poToken generation
+    log('Startup', c.green, 'Using OAuth2 authentication to bypass YouTube bot detection.');
 
     // 2. Start Lavalink
     log('Lavalink', c.yellow, 'Starting Lavalink server...');
