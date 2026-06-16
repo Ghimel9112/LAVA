@@ -131,8 +131,8 @@ async function setupCollector(message, player, queue, interaction) {
                     player.stopTrack();
                     break;
                 case 'stop':
-                    player.setPaused(true);
-                    interaction.client.shoukaku.leaveVoiceChannel(interaction.guild.id);
+                    player.stopTrack();
+                    await interaction.client.shoukaku.leaveVoiceChannel(interaction.guild.id);
                     interaction.client.queue.delete(interaction.guild.id);
                     const disabledRows = i.message.components.map(row => {
                         const r = ActionRowBuilder.from(row);
@@ -479,6 +479,13 @@ module.exports = {
         // 3. NEW PLAYER
         try {
             let player = interaction.client.shoukaku.players.get(interaction.guild.id);
+            
+            // Check if player exists but the bot is physically not in any voice channel
+            if (player && !interaction.guild.members.me.voice?.channelId) {
+                try { await interaction.client.shoukaku.leaveVoiceChannel(interaction.guild.id); } catch(e) {}
+                player = null;
+            }
+
             if (!player) {
                 player = await interaction.client.shoukaku.joinVoiceChannel({
                     guildId: interaction.guild.id,
@@ -568,11 +575,11 @@ module.exports = {
 
                         console.log('[Autoplay] No valid candidates found.');
                         if (!currentQueue.twentyFourSeven) {
-                            interaction.client.shoukaku.leaveVoiceChannel(interaction.guild.id);
+                            await interaction.client.shoukaku.leaveVoiceChannel(interaction.guild.id);
                             interaction.client.queue.delete(interaction.guild.id);
                         }
                     } else if (!currentQueue.twentyFourSeven) {
-                        interaction.client.shoukaku.leaveVoiceChannel(interaction.guild.id);
+                        await interaction.client.shoukaku.leaveVoiceChannel(interaction.guild.id);
                         interaction.client.queue.delete(interaction.guild.id);
                     }
                 }
@@ -620,7 +627,7 @@ module.exports = {
                                 .setDescription('⚠️ Multiple tracks failed to load. Stopping playback to avoid spam. Please try a different song or source.')]
                         });
                     } catch (e) {}
-                    interaction.client.shoukaku.leaveVoiceChannel(guildId);
+                    await interaction.client.shoukaku.leaveVoiceChannel(guildId);
                     interaction.client.queue.delete(guildId);
                     return;
                 }

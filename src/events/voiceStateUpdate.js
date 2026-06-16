@@ -47,7 +47,8 @@ module.exports = {
                 }
 
                 // 3. Disconnect and Cleanup
-                oldState.client.shoukaku.leaveVoiceChannel(oldState.guild.id);
+                if (queue.player) queue.player.stopTrack();
+                await oldState.client.shoukaku.leaveVoiceChannel(oldState.guild.id);
                 oldState.client.queue.delete(oldState.guild.id);
 
             } catch (error) {
