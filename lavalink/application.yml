@@ -11,7 +11,7 @@ lavalink:
       # Please use https://github.com/lavalink-devs/youtube-source#plugin instead.
       youtube: false
       bandcamp: true
-      soundcloud: true
+      soundcloud: false
       twitch: true
       vimeo: true
       http: true
@@ -37,7 +37,7 @@ lavalink:
     youtubePlaylistLoadLimit: 6 # Number of pages to load for one playlist
     playerUpdateInterval: 5 # How frequently to send player updates to clients, in seconds
     youtubeSearchEnabled: true
-    soundcloudSearchEnabled: true
+    soundcloudSearchEnabled: false
     gc-warnings: true
     #ratelimit:
       #ipBlocks: ["1.0.0.0/8", "..."] # list of ip blocks
@@ -85,9 +85,7 @@ plugins:
     providers: # Custom providers for track loading. This is the default
       - "ytsearch:\"%ISRC%\""
       - "ytsearch:%QUERY%"
-      #  you can add multiple other fallback sources here
-      - "scsearch:%QUERY%"
-      - "spsearch:%QUERY%"
+      - "amsearch:%QUERY%"
     sources:
       spotify: false # Disabled since it requires premium API
       applemusic: true # Enable Apple Music source as free alternative

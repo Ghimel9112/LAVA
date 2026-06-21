@@ -82,26 +82,7 @@ async function handleAutoplay(client, player, track, queue) {
             }
         }
 
-        // -----------------------------------------------------------------
-        // STRATEGY 2.5: Safe Mode Fallback to SoundCloud (if Spotify failed)
-        // -----------------------------------------------------------------
-        if (!premium && candidates.length === 0) {
-            try {
-                const query = `scsearch:${author} - ${title}`;
-                const res = await node.rest.resolve(query);
-
-                if (res && res.data) {
-                    let tracks = Array.isArray(res.data) ? res.data : (res.data.tracks || []);
-                    tracks = tracks.filter(t => t.info.identifier !== identifier);
-                    if (tracks.length > 0) {
-                        candidates = tracks;
-                        console.log(`[Autoplay] Strategy 2.5 (SoundCloud Search) found ${candidates.length} candidates.`);
-                    }
-                }
-            } catch (e) {
-                console.warn(`[Autoplay] Strategy 2.5 failed: ${e.message}`);
-            }
-        }
+        // SoundCloud fallback removed per user request.
 
         // -----------------------------------------------------------------
         // STRATEGY 3: Artist Search (Last Resort)
@@ -130,27 +111,7 @@ async function handleAutoplay(client, player, track, queue) {
             }
         }
 
-        // -----------------------------------------------------------------
-        // STRATEGY 4: Final Safe Mode Catch (SoundCloud Artist Search)
-        // -----------------------------------------------------------------
-        if (!premium && candidates.length === 0 && author) {
-            try {
-                const query = `scsearch:${author}`.trim();
-                const res = await node.rest.resolve(query);
-                const loadType = res?.loadType ? res.loadType.toLowerCase() : '';
-
-                if (loadType !== 'empty' && loadType !== 'error' && res && res.data) {
-                    let tracks = Array.isArray(res.data) ? res.data : (res.data.tracks || []);
-                    tracks = tracks.filter(t => t && t.info && t.info.identifier !== identifier);
-                    if (tracks.length > 0) {
-                        candidates = tracks;
-                        console.log(`[Autoplay] Strategy 4 (SoundCloud Artist) found ${candidates.length} candidates.`);
-                    }
-                }
-            } catch (e) {
-                console.warn(`[Autoplay] Strategy 4 (Artist) failed: ${e.message}`);
-            }
-        }
+        // Final SoundCloud fallback removed per user request.
 
         // -----------------------------------------------------------------
         // SELECTION & PLAY

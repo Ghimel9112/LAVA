@@ -412,18 +412,7 @@ module.exports = {
                 }
             }
 
-            // Strategy 3: Fallback SoundCloud if Apple Music gave nothing.
-            // On SoundCloud, appending YouTube channel names often ruins the search. We prioritize just the title first.
-            if (candidates.length === 0) {
-                const scQuery = songTitle || audioQuery;
-                const scResult = await node.rest.resolve(`scsearch:${scQuery}`);
-                const scLoadType = scResult?.loadType ? scResult.loadType.toLowerCase() : '';
-                if (scLoadType !== 'empty' && scLoadType !== 'error' && scResult && scResult.data) {
-                    const scTracks = (Array.isArray(scResult.data) ? scResult.data : (scResult.data.tracks || []))
-                        .filter(t => t && t.info && t.info.title);
-                    candidates.push(...scTracks.slice(0, 10));
-                }
-            }
+            // Soundcloud fallback removed per user request.
 
             if (candidates.length > 0) {
                 // Score and rank all candidates
