@@ -89,8 +89,8 @@ plugins:
       - "scsearch:%QUERY%"
       - "spsearch:%QUERY%"
     sources:
-      spotify: true # Enable Spotify source
-      applemusic: false # Enable Apple Music source
+      spotify: false # Disabled since it requires premium API
+      applemusic: true # Enable Apple Music source as free alternative
       deezer: false # Enable Deezer source
       yandexmusic: false # Enable Yandex Music source
       flow: false # Enable Flow source
