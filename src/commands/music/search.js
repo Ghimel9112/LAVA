@@ -21,7 +21,7 @@ module.exports = {
         if (!node) return interaction.editReply('❌ No Lavalink node is available.');
 
         const isPremium = db.isPremium(interaction.guild.id);
-        const searchPrefix = (isPremium && !interaction.client.youtubeDisabled) ? 'ytsearch:' : 'ytmsearch:';
+        const searchPrefix = (isPremium && !interaction.client.youtubeDisabled) ? 'ytsearch:' : 'spsearch:';
 
         const res = await node.rest.resolve(`${searchPrefix}${query}`);
         if (!res?.data) return interaction.editReply('❌ No results found.');

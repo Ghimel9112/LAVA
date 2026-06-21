@@ -392,8 +392,8 @@ module.exports = {
             const audioQuery = (songTitle && songAuthor) ? `${songTitle} ${songAuthor}` : query;
             let candidates = [];
 
-            // Strategy 1: YouTube Music search with full query (Replaces Spotify)
-            const spResult = await node.rest.resolve(`ytmsearch:${audioQuery}`);
+            // Strategy 1: Spotify search with full query
+            const spResult = await node.rest.resolve(`spsearch:${audioQuery}`);
             const spLoadType = spResult?.loadType ? spResult.loadType.toLowerCase() : '';
             if (spLoadType !== 'empty' && spLoadType !== 'error' && spResult && spResult.data) {
                 const spTracks = (Array.isArray(spResult.data) ? spResult.data : (spResult.data.tracks || []))
@@ -401,9 +401,9 @@ module.exports = {
                 candidates.push(...spTracks.slice(0, 10));
             }
 
-            // Strategy 2: If we have separate title/author, also try just the title on YouTube Music
+            // Strategy 2: If we have separate title/author, also try just the title
             if (songTitle && songAuthor && candidates.length < 5) {
-                const spResult2 = await node.rest.resolve(`ytmsearch:${songTitle}`);
+                const spResult2 = await node.rest.resolve(`spsearch:${songTitle}`);
                 const spLoadType2 = spResult2?.loadType ? spResult2.loadType.toLowerCase() : '';
                 if (spLoadType2 !== 'empty' && spLoadType2 !== 'error' && spResult2 && spResult2.data) {
                     const spTracks2 = (Array.isArray(spResult2.data) ? spResult2.data : (spResult2.data.tracks || []))
@@ -412,9 +412,11 @@ module.exports = {
                 }
             }
 
-            // Strategy 3: Fallback SoundCloud if Spotify gave nothing
+            // Strategy 3: Fallback SoundCloud if Spotify gave nothing.
+            // On SoundCloud, appending YouTube channel names often ruins the search. We prioritize just the title first.
             if (candidates.length === 0) {
-                const scResult = await node.rest.resolve(`scsearch:${audioQuery}`);
+                const scQuery = songTitle || audioQuery;
+                const scResult = await node.rest.resolve(`scsearch:${scQuery}`);
                 const scLoadType = scResult?.loadType ? scResult.loadType.toLowerCase() : '';
                 if (scLoadType !== 'empty' && scLoadType !== 'error' && scResult && scResult.data) {
                     const scTracks = (Array.isArray(scResult.data) ? scResult.data : (scResult.data.tracks || []))
@@ -521,7 +523,7 @@ module.exports = {
                         { name: 'Duration', value: formatDuration(currentTrack.info.length), inline: true },
                         { name: 'Requested By', value: `<@${interaction.user.id}>`, inline: true }
                     )
-                    .setFooter({ text: isPremium ? 'Premium Mode • Direct Source Access' : 'Safe Mode • YT Music Priority • Anti-Remix' });
+                    .setFooter({ text: isPremium ? 'Premium Mode • Direct Source Access' : 'Safe Mode • Spotify Priority • Anti-Remix' });
 
                 if (currentTrack.info.artworkUrl) embed.setThumbnail(currentTrack.info.artworkUrl);
 
