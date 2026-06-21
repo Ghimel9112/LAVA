@@ -371,7 +371,9 @@ module.exports = {
             let songTitle = '', songAuthor = '';
             if (/^https?:\/\/(www\.)?(youtube\.com|youtu\.be|music\.youtube\.com)/.test(query)) {
                 try {
-                    const info = await YouTube.getVideo(query);
+                    const idMatch = query.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|shorts\/|watch\?v=|watch\?.+&v=)|music\.youtube\.com\/watch\?v=)([^"&?\/\s]{11})/);
+                    const videoId = idMatch ? idMatch[1] : query;
+                    const info = await YouTube.getVideo(idMatch ? `https://www.youtube.com/watch?v=${videoId}` : query);
                     songTitle = cleanTitle(info.title);
                     songAuthor = (info.channel?.name || '').replace(/\s*-\s*Topic$/gi, '').replace(/VEVO$/gi, '').trim();
                 } catch (error) { console.error('YouTube metadata error:', error); }
