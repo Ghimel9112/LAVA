@@ -61,7 +61,7 @@ async function handleAutoplay(client, player, track, queue) {
         if (candidates.length === 0) {
             try {
                 // If Safe Mode (Non-Premium), use Spotify/SoundCloud. If Premium, use YouTube.
-                const searchPrefix = (premium && !ytDisabled) ? 'ytsearch:' : 'spsearch:';
+                const searchPrefix = (premium && !ytDisabled) ? 'ytsearch:' : 'ytmsearch:';
                 const query = `${searchPrefix}${author} - ${title}`;
 
                 const res = await node.rest.resolve(query);
@@ -74,7 +74,7 @@ async function handleAutoplay(client, player, track, queue) {
 
                     if (tracks.length > 0) {
                         candidates = tracks;
-                        console.log(`[Autoplay] Strategy 2 (${premium ? 'YT' : 'Spotify'} Search) found ${candidates.length} candidates.`);
+                        console.log(`[Autoplay] Strategy 2 (${premium ? 'YT' : 'YT Music'} Search) found ${candidates.length} candidates.`);
                     }
                 }
             } catch (e) {
@@ -108,7 +108,7 @@ async function handleAutoplay(client, player, track, queue) {
         // -----------------------------------------------------------------
         if (candidates.length === 0) {
             try {
-                const searchPrefix = (premium && !ytDisabled) ? 'ytsearch:' : 'spsearch:';
+                const searchPrefix = (premium && !ytDisabled) ? 'ytsearch:' : 'ytmsearch:';
                 // For Spotify, "top tracks" or just the artist name is usually better than "official audio"
                 const suffix = (premium && !ytDisabled) ? 'official audio' : '';
                 const query = `${searchPrefix}${author} ${suffix}`.trim();
