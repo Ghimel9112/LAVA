@@ -42,6 +42,7 @@ module.exports = {
             `The bot is still in development!`,
             `lavabot.site`,
             `Lava Network`,
+            `Want to test the premium features? use /requestpremium`,
         ];
 
         let statusIndex = 0;
