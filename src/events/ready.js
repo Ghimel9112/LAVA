@@ -40,6 +40,8 @@ module.exports = {
             `🚁 𝓐𝓽𝓪𝓬 𝓓𝓮 𝓔𝓵𝓲𝓬𝓸𝓹𝓽𝓮𝓻𝓮 🚁`,
             `Enjoy using this bot! :)`,
             `The bot is still in development!`,
+            `lavabot.site`,
+            `Lava Network`,
         ];
 
         let statusIndex = 0;

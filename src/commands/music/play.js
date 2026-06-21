@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder, ComponentType, MessageFlags } = require('discord.js');
-const ytdl = require('@distube/ytdl-core');
+const YouTube = require('youtube-sr').default;
 const db = require('../../utils/db');
 const handleAutoplay = require('../../utils/autoplay');
 
@@ -369,12 +369,12 @@ module.exports = {
         // Safe Mode single-track search (non-playlist)
         if (!searchResult) {
             let songTitle = '', songAuthor = '';
-            if (ytdl.validateURL(query)) {
+            if (/^https?:\/\/(www\.)?(youtube\.com|youtu\.be|music\.youtube\.com)/.test(query)) {
                 try {
-                    const info = await ytdl.getBasicInfo(query);
-                    songTitle = cleanTitle(info.videoDetails.title);
-                    songAuthor = info.videoDetails.author.name.replace(/\s*-\s*Topic$/gi, '').replace(/VEVO$/gi, '').trim();
-                } catch (error) { }
+                    const info = await YouTube.getVideo(query);
+                    songTitle = cleanTitle(info.title);
+                    songAuthor = (info.channel?.name || '').replace(/\s*-\s*Topic$/gi, '').replace(/VEVO$/gi, '').trim();
+                } catch (error) { console.error('YouTube metadata error:', error); }
             } else {
                 // Try to split "artist - title" format from user input
                 const dashSplit = query.match(/^(.+?)\s*[-–—]\s*(.+)$/);
