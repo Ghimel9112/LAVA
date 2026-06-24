@@ -29,71 +29,32 @@ async function handleAutoplay(client, player, track, queue) {
         let candidates = [];
 
         // -----------------------------------------------------------------
-        // STRATEGY 1: YouTube Mix (PREMIUM ONLY)
+        // STRATEGY 1: Apple Music Search (Primary - works everywhere)
         // -----------------------------------------------------------------
-        if (premium && !ytDisabled) {
-            try {
-                const mixURL = `https://www.youtube.com/watch?v=${identifier}&list=RD${identifier}`;
-                const res = await node.rest.resolve(mixURL);
+        try {
+            const query = `amsearch:${author} - ${title}`;
+            const res = await node.rest.resolve(query);
 
-                if (res && res.data) {
-                    let tracks = [];
-                    if (Array.isArray(res.data)) tracks = res.data;
-                    else if (res.data.tracks) tracks = res.data.tracks;
-                    else if (res.tracks) tracks = res.tracks;
+            const loadType = res?.loadType ? res.loadType.toLowerCase() : '';
+            if (loadType !== 'empty' && loadType !== 'error' && res && res.data) {
+                let tracks = Array.isArray(res.data) ? res.data : (res.data.tracks || []);
+                tracks = tracks.filter(t => t && t.info && t.info.identifier !== identifier);
 
-                    candidates = tracks.filter(t => t && t.info && t.info.identifier !== identifier);
-
-                    if (candidates.length > 0) {
-                        console.log(`[Autoplay] Strategy 1 (Mix) found ${candidates.length} candidates.`);
-                    }
+                if (tracks.length > 0) {
+                    candidates = tracks;
+                    console.log(`[Autoplay] Strategy 1 (Apple Music) found ${candidates.length} candidates.`);
                 }
-            } catch (e) {
-                console.warn(`[Autoplay] Strategy 1 (Mix) failed: ${e.message}`);
             }
-        } else {
-            console.log(`[Autoplay] Skipping Strategy 1 (Mix) - ${ytDisabled ? 'YouTube disabled' : 'Safe Mode enabled'}.`);
+        } catch (e) {
+            console.warn(`[Autoplay] Strategy 1 (Apple Music) failed: ${e.message}`);
         }
 
         // -----------------------------------------------------------------
-        // STRATEGY 2: Recent / Related Search (SAFE MODE Aware)
+        // STRATEGY 2: SoundCloud Search (Fallback)
         // -----------------------------------------------------------------
         if (candidates.length === 0) {
             try {
-                // If Safe Mode (Non-Premium), use Spotify/SoundCloud. If Premium, use YouTube.
-                const searchPrefix = (premium && !ytDisabled) ? 'ytsearch:' : 'amsearch:';
-                const query = `${searchPrefix}${author} - ${title}`;
-
-                const res = await node.rest.resolve(query);
-
-                // Check for loadType 'empty' or 'error' to consider it a failure
-                const loadType = res?.loadType ? res.loadType.toLowerCase() : '';
-                if (loadType !== 'empty' && loadType !== 'error' && res && res.data) {
-                    let tracks = Array.isArray(res.data) ? res.data : (res.data.tracks || []);
-                    tracks = tracks.filter(t => t && t.info && t.info.identifier !== identifier);
-
-                    if (tracks.length > 0) {
-                        candidates = tracks;
-                        console.log(`[Autoplay] Strategy 2 (${premium ? 'YT' : 'Apple Music'} Search) found ${candidates.length} candidates.`);
-                    }
-                }
-            } catch (e) {
-                console.warn(`[Autoplay] Strategy 2 failed: ${e.message}`);
-            }
-        }
-
-        // SoundCloud fallback removed per user request.
-
-        // -----------------------------------------------------------------
-        // STRATEGY 3: Artist Search (Last Resort)
-        // -----------------------------------------------------------------
-        if (candidates.length === 0) {
-            try {
-                const searchPrefix = (premium && !ytDisabled) ? 'ytsearch:' : 'amsearch:';
-                // For Spotify, "top tracks" or just the artist name is usually better than "official audio"
-                const suffix = (premium && !ytDisabled) ? 'official audio' : '';
-                const query = `${searchPrefix}${author} ${suffix}`.trim();
-
+                const query = `scsearch:${author} - ${title}`;
                 const res = await node.rest.resolve(query);
 
                 const loadType = res?.loadType ? res.loadType.toLowerCase() : '';
@@ -103,15 +64,59 @@ async function handleAutoplay(client, player, track, queue) {
 
                     if (tracks.length > 0) {
                         candidates = tracks;
-                        console.log(`[Autoplay] Strategy 3 (Artist) found ${candidates.length} candidates.`);
+                        console.log(`[Autoplay] Strategy 2 (SoundCloud) found ${candidates.length} candidates.`);
                     }
                 }
             } catch (e) {
-                console.warn(`[Autoplay] Strategy 3 (Artist) failed: ${e.message}`);
+                console.warn(`[Autoplay] Strategy 2 (SoundCloud) failed: ${e.message}`);
             }
         }
 
-        // Final SoundCloud fallback removed per user request.
+        // -----------------------------------------------------------------
+        // STRATEGY 3: YouTube Search (Only if enabled and other sources failed)
+        // -----------------------------------------------------------------
+        if (candidates.length === 0 && !ytDisabled) {
+            try {
+                const query = `ytsearch:${author} - ${title}`;
+                const res = await node.rest.resolve(query);
+
+                const loadType = res?.loadType ? res.loadType.toLowerCase() : '';
+                if (loadType !== 'empty' && loadType !== 'error' && res && res.data) {
+                    let tracks = Array.isArray(res.data) ? res.data : (res.data.tracks || []);
+                    tracks = tracks.filter(t => t && t.info && t.info.identifier !== identifier);
+
+                    if (tracks.length > 0) {
+                        candidates = tracks;
+                        console.log(`[Autoplay] Strategy 3 (YouTube) found ${candidates.length} candidates.`);
+                    }
+                }
+            } catch (e) {
+                console.warn(`[Autoplay] Strategy 3 (YouTube) failed: ${e.message}`);
+            }
+        }
+
+        // -----------------------------------------------------------------
+        // STRATEGY 4: Artist Search on Apple Music (Last Resort)
+        // -----------------------------------------------------------------
+        if (candidates.length === 0) {
+            try {
+                const query = `amsearch:${author}`;
+                const res = await node.rest.resolve(query);
+
+                const loadType = res?.loadType ? res.loadType.toLowerCase() : '';
+                if (loadType !== 'empty' && loadType !== 'error' && res && res.data) {
+                    let tracks = Array.isArray(res.data) ? res.data : (res.data.tracks || []);
+                    tracks = tracks.filter(t => t && t.info && t.info.identifier !== identifier);
+
+                    if (tracks.length > 0) {
+                        candidates = tracks;
+                        console.log(`[Autoplay] Strategy 4 (Artist - Apple Music) found ${candidates.length} candidates.`);
+                    }
+                }
+            } catch (e) {
+                console.warn(`[Autoplay] Strategy 4 (Artist) failed: ${e.message}`);
+            }
+        }
 
         // -----------------------------------------------------------------
         // SELECTION & PLAY

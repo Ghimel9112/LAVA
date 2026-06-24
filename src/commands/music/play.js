@@ -276,72 +276,82 @@ module.exports = {
         console.log(`[DEBUG] Guild: ${interaction.guild.id}, Premium: ${isPremium}, Query: ${query}`);
 
         if (isPremium) {
-            // premium: try direct resolution first
-            const res = await node.rest.resolve(query);
-            console.log(`[DEBUG] Premium Direct Resolve: type=${res?.loadType}, dataIsArray=${Array.isArray(res?.data)}`);
+            // premium: try direct resolution first for URLs (Spotify, SoundCloud, etc.)
+            // For text queries, prioritize Apple Music to avoid YouTube blocks
+            const isUrl = /^https?:\/\//.test(query);
+            
+            if (isUrl) {
+                const res = await node.rest.resolve(query);
+                console.log(`[DEBUG] Premium Direct Resolve (URL): type=${res?.loadType}, dataIsArray=${Array.isArray(res?.data)}`);
 
-            // Handle both v4 (data) and v3 (tracks) structures
-            const loadType = res?.loadType ? res.loadType.toLowerCase() : '';
-            const rawData = res?.data || res?.tracks; // v4 uses data, v3 uses tracks
+                // Handle both v4 (data) and v3 (tracks) structures
+                const loadType = res?.loadType ? res.loadType.toLowerCase() : '';
+                const rawData = res?.data || res?.tracks; // v4 uses data, v3 uses tracks
 
-            if (rawData) {
-                // If it's a playlist or a direct track URL
-                // v4: loadType='playlist' or 'search', data is { tracks: [...] } or [...]
-                // v3: loadType='PLAYLIST_LOADED', tracks is [...]
+                if (rawData) {
+                    // If it's a playlist or a direct track URL
+                    // v4: loadType='playlist' or 'search', data is { tracks: [...] } or [...]
+                    // v3: loadType='PLAYLIST_LOADED', tracks is [...]
 
-                if (loadType === 'playlist' || loadType === 'playlist_loaded') {
-                    // PLAYLIST: queue ALL tracks
-                    let tracks = [];
-                    if (Array.isArray(rawData)) {
-                        tracks = rawData;
-                    } else if (rawData.tracks && Array.isArray(rawData.tracks)) {
-                        tracks = rawData.tracks;
-                    }
+                    if (loadType === 'playlist' || loadType === 'playlist_loaded') {
+                        // PLAYLIST: queue ALL tracks
+                        let tracks = [];
+                        if (Array.isArray(rawData)) {
+                            tracks = rawData;
+                        } else if (rawData.tracks && Array.isArray(rawData.tracks)) {
+                            tracks = rawData.tracks;
+                        }
 
-                    // Filter to only valid tracks
-                    tracks = tracks.filter(t => t && t.info && t.info.title);
+                        // Filter to only valid tracks
+                        tracks = tracks.filter(t => t && t.info && t.info.title);
 
-                    if (tracks.length > 0) {
-                        const playlistName = rawData.info?.name || 'Unknown Playlist';
-                        searchResult = { loadType: 'playlist', data: tracks[0], allTracks: tracks, playlistName };
-                    }
-                } else if (loadType === 'search' || loadType === 'search_result') {
-                    // SEARCH: take first result only
-                    let tracks = [];
-                    if (Array.isArray(rawData)) {
-                        tracks = rawData;
-                    } else if (rawData.tracks && Array.isArray(rawData.tracks)) {
-                        tracks = rawData.tracks;
-                    }
-
-                    if (tracks && tracks.length > 0) {
-                        searchResult = { loadType: 'track', data: tracks[0] };
-                    }
-                } else if (loadType === 'track' || loadType === 'track_loaded' || loadType === 'short') {
-                    // v4: data is track object
-                    // v3: tracks is array of 1 track
-                    if (Array.isArray(rawData)) {
-                        searchResult = { loadType: 'track', data: rawData[0] };
-                    } else {
-                        searchResult = { loadType: 'track', data: rawData };
+                        if (tracks.length > 0) {
+                            const playlistName = rawData.info?.name || 'Unknown Playlist';
+                            searchResult = { loadType: 'playlist', data: tracks[0], allTracks: tracks, playlistName };
+                        }
+                    } else if (loadType === 'track' || loadType === 'track_loaded' || loadType === 'short') {
+                        // v4: data is track object
+                        // v3: tracks is array of 1 track
+                        if (Array.isArray(rawData)) {
+                            searchResult = { loadType: 'track', data: rawData[0] };
+                        } else {
+                            searchResult = { loadType: 'track', data: rawData };
+                        }
                     }
                 }
-            }
+            } else {
+                // Text query: use Apple Music search first to avoid YouTube IP blocks
+                const res = await node.rest.resolve(`amsearch:${query}`);
+                console.log(`[DEBUG] Premium Apple Music Search: type=${res?.loadType}, dataIsArray=${Array.isArray(res?.data)}`);
 
-            // Fallback for text search if direct resolve failed (skip if YouTube is disabled)
-            if (!searchResult && !/^https?:\/\//.test(query) && !interaction.client.youtubeDisabled) {
-                const ytRes = await node.rest.resolve(`ytsearch:${query}`);
-                if (ytRes?.data) {
-                    const tracks = Array.isArray(ytRes.data) ? ytRes.data : (ytRes.data.tracks || []);
+                const loadType = res?.loadType ? res.loadType.toLowerCase() : '';
+                const rawData = res?.data || res?.tracks;
+
+                if (rawData && loadType !== 'empty' && loadType !== 'error') {
+                    let tracks = Array.isArray(rawData) ? rawData : (rawData.tracks || []);
+                    tracks = tracks.filter(t => t && t.info && t.info.title);
+                    
                     if (tracks.length > 0) {
                         searchResult = { loadType: 'track', data: tracks[0] };
+                        console.log(`[DEBUG] Premium Apple Music match: ${tracks[0].info.title}`);
+                    }
+                }
+
+                // Fallback to YouTube only if Apple Music fails and YouTube is not disabled
+                if (!searchResult && !interaction.client.youtubeDisabled) {
+                    const ytRes = await node.rest.resolve(`ytsearch:${query}`);
+                    if (ytRes?.data) {
+                        const tracks = Array.isArray(ytRes.data) ? ytRes.data : (ytRes.data.tracks || []);
+                        if (tracks.length > 0) {
+                            searchResult = { loadType: 'track', data: tracks[0] };
+                        }
                     }
                 }
             }
         }
 
         // If not premium OR if premium search failed,
-        // Fallback to Safe Mode
+        // Fallback to Safe Mode (Apple Music priority)
         if (!searchResult) {
             // Check if this is a Spotify/platform playlist URL (try direct resolve first)
             if (/^https?:\/\//.test(query)) {
@@ -366,7 +376,7 @@ module.exports = {
             }
         }
 
-        // Safe Mode single-track search (non-playlist)
+        // Universal Safe Mode single-track search (Apple Music primary, SoundCloud fallback)
         if (!searchResult) {
             let songTitle = '', songAuthor = '';
             if (/^https?:\/\/(www\.)?(youtube\.com|youtu\.be|music\.youtube\.com)/.test(query)) {
@@ -392,27 +402,58 @@ module.exports = {
             const audioQuery = (songTitle && songAuthor) ? `${songTitle} ${songAuthor}` : query;
             let candidates = [];
 
-            // Strategy 1: Apple Music search with full query (Free alternative to Spotify)
-            const spResult = await node.rest.resolve(`amsearch:${audioQuery}`);
-            const spLoadType = spResult?.loadType ? spResult.loadType.toLowerCase() : '';
-            if (spLoadType !== 'empty' && spLoadType !== 'error' && spResult && spResult.data) {
-                const spTracks = (Array.isArray(spResult.data) ? spResult.data : (spResult.data.tracks || []))
+            // Strategy 1: Apple Music search with full query (primary source - works everywhere)
+            const amResult = await node.rest.resolve(`amsearch:${audioQuery}`);
+            const amLoadType = amResult?.loadType ? amResult.loadType.toLowerCase() : '';
+            if (amLoadType !== 'empty' && amLoadType !== 'error' && amResult && amResult.data) {
+                const amTracks = (Array.isArray(amResult.data) ? amResult.data : (amResult.data.tracks || []))
                     .filter(t => t && t.info && t.info.title);
-                candidates.push(...spTracks.slice(0, 10));
+                candidates.push(...amTracks.slice(0, 10));
+                console.log(`[Search] Apple Music found ${amTracks.length} candidates`);
             }
 
-            // Strategy 2: If we have separate title/author, also try just the title
+            // Strategy 2: If we have separate title/author, also try just the title on Apple Music
             if (songTitle && songAuthor && candidates.length < 5) {
-                const spResult2 = await node.rest.resolve(`amsearch:${songTitle}`);
-                const spLoadType2 = spResult2?.loadType ? spResult2.loadType.toLowerCase() : '';
-                if (spLoadType2 !== 'empty' && spLoadType2 !== 'error' && spResult2 && spResult2.data) {
-                    const spTracks2 = (Array.isArray(spResult2.data) ? spResult2.data : (spResult2.data.tracks || []))
+                const amResult2 = await node.rest.resolve(`amsearch:${songTitle}`);
+                const amLoadType2 = amResult2?.loadType ? amResult2.loadType.toLowerCase() : '';
+                if (amLoadType2 !== 'empty' && amLoadType2 !== 'error' && amResult2 && amResult2.data) {
+                    const amTracks2 = (Array.isArray(amResult2.data) ? amResult2.data : (amResult2.data.tracks || []))
                         .filter(t => t && t.info && t.info.title);
-                    candidates.push(...spTracks2.slice(0, 5));
+                    candidates.push(...amTracks2.slice(0, 5));
                 }
             }
 
-            // Soundcloud fallback removed per user request.
+            // Strategy 3: SoundCloud search as fallback
+            if (candidates.length < 5) {
+                try {
+                    const scResult = await node.rest.resolve(`scsearch:${audioQuery}`);
+                    const scLoadType = scResult?.loadType ? scResult.loadType.toLowerCase() : '';
+                    if (scLoadType !== 'empty' && scLoadType !== 'error' && scResult && scResult.data) {
+                        const scTracks = (Array.isArray(scResult.data) ? scResult.data : (scResult.data.tracks || []))
+                            .filter(t => t && t.info && t.info.title);
+                        candidates.push(...scTracks.slice(0, 5));
+                        console.log(`[Search] SoundCloud found ${scTracks.length} candidates`);
+                    }
+                } catch (e) {
+                    console.warn('[Search] SoundCloud search failed:', e.message);
+                }
+            }
+
+            // Strategy 4: YouTube search ONLY if enabled and other sources failed
+            if (candidates.length === 0 && !interaction.client.youtubeDisabled) {
+                try {
+                    const ytResult = await node.rest.resolve(`ytsearch:${audioQuery}`);
+                    const ytLoadType = ytResult?.loadType ? ytResult.loadType.toLowerCase() : '';
+                    if (ytLoadType !== 'empty' && ytLoadType !== 'error' && ytResult && ytResult.data) {
+                        const ytTracks = (Array.isArray(ytResult.data) ? ytResult.data : (ytResult.data.tracks || []))
+                            .filter(t => t && t.info && t.info.title);
+                        candidates.push(...ytTracks.slice(0, 5));
+                        console.log(`[Search] YouTube fallback found ${ytTracks.length} candidates`);
+                    }
+                } catch (e) {
+                    console.warn('[Search] YouTube fallback failed:', e.message);
+                }
+            }
 
             if (candidates.length > 0) {
                 // Score and rank all candidates
@@ -431,12 +472,12 @@ module.exports = {
 
                 if (scored.length > 0 && scored[0].score >= 0.3) {
                     searchResult = { loadType: 'track', data: scored[0].track };
-                    console.log(`[Search] Best match: "${scored[0].track.info.title}" by ${scored[0].track.info.author} (score: ${scored[0].score.toFixed(2)})`);
+                    console.log(`[Search] Best match: "${scored[0].track.info.title}" by ${scored[0].track.info.author} (score: ${scored[0].score.toFixed(2)}, source: ${scored[0].track.info.sourceName})`);
                 } else {
-                    // Low confidence - take the first Spotify result anyway
+                    // Low confidence - take the first result anyway
                     const fallback = candidates[0];
                     searchResult = { loadType: 'track', data: fallback };
-                    console.log(`[Search] Low confidence fallback: "${fallback.info.title}" by ${fallback.info.author}`);
+                    console.log(`[Search] Low confidence fallback: "${fallback.info.title}" by ${fallback.info.author} (source: ${fallback.info.sourceName})`);
                 }
             }
         }
