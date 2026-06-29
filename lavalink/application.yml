@@ -89,9 +89,9 @@ plugins:
     allowDirectPlaylistIds: true
     clients:
       - MUSIC
-      - TVHTML5EMBEDDED
+      - ANDROID_VR
       - WEB
-      - IOS
+      - WEBEMBEDDED
     oauth:
       enabled: true
       refreshToken: "1//044BVB2YHSQIWCgYIARAAGAQSNwF-L9IrUyFRtw8ysp9SB5iapEsIEXNyxhd8-WmVCcVBDYmTXqWWeGVIiFWBOjIIodLHYvY2fCU"
