@@ -29,9 +29,33 @@ async function handleAutoplay(client, player, track, queue) {
         let candidates = [];
         const history = queue.previousTracks || new Set();
 
+        const isUnwantedTrack = (candidateTitle, candidateAuthor, seedTitle, seedAuthor) => {
+            const lowerCandidateTitle = (candidateTitle || '').toLowerCase();
+            const lowerCandidateAuthor = (candidateAuthor || '').toLowerCase();
+            const lowerSeedTitle = (seedTitle || '').toLowerCase();
+            const lowerSeedAuthor = (seedAuthor || '').toLowerCase();
+            
+            const unwanted = /\b(remix|mix|live|cover|edit|club|extended|instrumental|karaoke|slowed|reverb|sped up|nightcore|bass boosted|radio)\b/i;
+            
+            const titleMatch = lowerCandidateTitle.match(unwanted);
+            if (titleMatch) {
+                const word = titleMatch[1].toLowerCase();
+                if (!lowerSeedTitle.includes(word)) {
+                    return true;
+                }
+            }
+            
+            if (lowerCandidateAuthor.includes('dj ') && !lowerSeedAuthor.includes('dj ')) {
+                return true;
+            }
+            
+            return false;
+        };
+
         const getNewTracks = (tracks) => {
             return tracks.filter(t => {
                 if (!t || !t.info || t.info.identifier === identifier) return false;
+                if (isUnwantedTrack(t.info.title, t.info.author, title, author)) return false;
                 const sig = getBaseSignature(t.info.author, t.info.title);
                 return !history.has(sig);
             });
