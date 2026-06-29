@@ -587,7 +587,9 @@ module.exports = {
             });
 
             player.on('end', async (data) => {
-                if (data.reason === 'loadFailed' || data.reason === 'LOAD_FAILED') return;
+                const reason = (data.reason || '').toLowerCase();
+                // Only process the queue progression if the track naturally finished or was explicitly stopped
+                if (reason !== 'finished' && reason !== 'stopped') return;
                 
                 const currentQueue = interaction.client.queue.get(interaction.guild.id);
                 if (currentQueue && currentQueue.player) {
@@ -705,7 +707,7 @@ module.exports = {
 
                         // Attempt to fallback using the title and artist of the failed track
                         const failedTrack = q.songs[0];
-                        if (failedTrack && failedTrack.info) {
+                        if (failedTrack && failedTrack.info && !failedTrack.isFallback) {
                             const fallbackQuery = `${failedTrack.info.title} ${failedTrack.info.author || ''}`.trim();
                             
                             try {
@@ -717,11 +719,10 @@ module.exports = {
                                     tracks = tracks.filter(t => t && t.info && t.info.title);
                                     
                                     if (tracks.length > 0) {
+                                        // Tag the track so we don't infinitely fallback if this one also fails
+                                        tracks[0].isFallback = true;
                                         // Replace the failed track with the new fallback track
                                         q.songs[0] = tracks[0];
-                                        // Reset consecutive fails since we are attempting a recovery
-                                        state.consecutiveFails = 0;
-                                        exceptionState.set(guildId, state);
                                         
                                         // Play the fallback track
                                         q.player.playTrack({ encodedTrack: tracks[0].encoded });
