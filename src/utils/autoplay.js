@@ -27,6 +27,15 @@ async function handleAutoplay(client, player, track, queue) {
         console.log(`[Autoplay] Seed: ${title} by ${author} (${identifier}) | Premium: ${premium}`);
 
         let candidates = [];
+        const history = queue.previousTracks || new Set();
+
+        const getNewTracks = (tracks) => {
+            return tracks.filter(t => {
+                if (!t || !t.info || t.info.identifier === identifier) return false;
+                const sig = getBaseSignature(t.info.author, t.info.title);
+                return !history.has(sig);
+            });
+        };
 
         // -----------------------------------------------------------------
         // STRATEGY 1: Apple Music Search (Primary - works everywhere)
@@ -38,11 +47,11 @@ async function handleAutoplay(client, player, track, queue) {
             const loadType = res?.loadType ? res.loadType.toLowerCase() : '';
             if (loadType !== 'empty' && loadType !== 'error' && res && res.data) {
                 let tracks = Array.isArray(res.data) ? res.data : (res.data.tracks || []);
-                tracks = tracks.filter(t => t && t.info && t.info.identifier !== identifier);
+                let newTracks = getNewTracks(tracks);
 
-                if (tracks.length > 0) {
-                    candidates = tracks;
-                    console.log(`[Autoplay] Strategy 1 (Apple Music) found ${candidates.length} candidates.`);
+                if (newTracks.length > 0) {
+                    candidates = newTracks;
+                    console.log(`[Autoplay] Strategy 1 (Apple Music) found ${candidates.length} new candidates.`);
                 }
             }
         } catch (e) {
@@ -60,11 +69,11 @@ async function handleAutoplay(client, player, track, queue) {
                 const loadType = res?.loadType ? res.loadType.toLowerCase() : '';
                 if (loadType !== 'empty' && loadType !== 'error' && res && res.data) {
                     let tracks = Array.isArray(res.data) ? res.data : (res.data.tracks || []);
-                    tracks = tracks.filter(t => t && t.info && t.info.identifier !== identifier);
+                    let newTracks = getNewTracks(tracks);
 
-                    if (tracks.length > 0) {
-                        candidates = tracks;
-                        console.log(`[Autoplay] Strategy 2 (SoundCloud) found ${candidates.length} candidates.`);
+                    if (newTracks.length > 0) {
+                        candidates = newTracks;
+                        console.log(`[Autoplay] Strategy 2 (SoundCloud) found ${candidates.length} new candidates.`);
                     }
                 }
             } catch (e) {
@@ -83,11 +92,11 @@ async function handleAutoplay(client, player, track, queue) {
                 const loadType = res?.loadType ? res.loadType.toLowerCase() : '';
                 if (loadType !== 'empty' && loadType !== 'error' && res && res.data) {
                     let tracks = Array.isArray(res.data) ? res.data : (res.data.tracks || []);
-                    tracks = tracks.filter(t => t && t.info && t.info.identifier !== identifier);
+                    let newTracks = getNewTracks(tracks);
 
-                    if (tracks.length > 0) {
-                        candidates = tracks;
-                        console.log(`[Autoplay] Strategy 3 (YouTube) found ${candidates.length} candidates.`);
+                    if (newTracks.length > 0) {
+                        candidates = newTracks;
+                        console.log(`[Autoplay] Strategy 3 (YouTube) found ${candidates.length} new candidates.`);
                     }
                 }
             } catch (e) {
@@ -106,11 +115,11 @@ async function handleAutoplay(client, player, track, queue) {
                 const loadType = res?.loadType ? res.loadType.toLowerCase() : '';
                 if (loadType !== 'empty' && loadType !== 'error' && res && res.data) {
                     let tracks = Array.isArray(res.data) ? res.data : (res.data.tracks || []);
-                    tracks = tracks.filter(t => t && t.info && t.info.identifier !== identifier);
+                    let newTracks = getNewTracks(tracks);
 
-                    if (tracks.length > 0) {
-                        candidates = tracks;
-                        console.log(`[Autoplay] Strategy 4 (Artist - Apple Music) found ${candidates.length} candidates.`);
+                    if (newTracks.length > 0) {
+                        candidates = newTracks;
+                        console.log(`[Autoplay] Strategy 4 (Artist - Apple Music) found ${candidates.length} new candidates.`);
                     }
                 }
             } catch (e) {
@@ -126,18 +135,11 @@ async function handleAutoplay(client, player, track, queue) {
             return null;
         }
 
-        const history = queue.previousTracks || new Set();
-        let valid = candidates.filter(t => {
-            const sig = `${t.info.author} - ${t.info.title}`.toLowerCase();
-            return !history.has(sig);
-        });
-
-        if (valid.length === 0) valid = candidates;
-
+        const valid = candidates; // Already filtered for uniqueness
         const randomTrack = valid[Math.floor(Math.random() * valid.length)];
 
         queue.songs.push(randomTrack);
-        const sig = `${randomTrack.info.author} - ${randomTrack.info.title}`.toLowerCase();
+        const sig = getBaseSignature(randomTrack.info.author, randomTrack.info.title);
         queue.previousTracks.add(sig);
 
         if (queue.textChannel) {
@@ -152,4 +154,24 @@ async function handleAutoplay(client, player, track, queue) {
     }
 }
 
-module.exports = handleAutoplay;
+function getBaseSignature(author, title) {
+    const cleanTitle = (title || '').toLowerCase()
+        .replace(/\(.*?\)/g, '')
+        .replace(/\[.*?\]/g, '')
+        .replace(/remix/g, '')
+        .replace(/mix/g, '')
+        .replace(/radio edit/g, '')
+        .replace(/official video/g, '')
+        .replace(/official audio/g, '')
+        .replace(/lyric video/g, '')
+        .replace(/[^a-z0-9]/g, '')
+        .trim();
+        
+    const cleanAuthor = (author || '').toLowerCase()
+        .replace(/[^a-z0-9]/g, '')
+        .trim();
+        
+    return `${cleanAuthor}-${cleanTitle}`;
+}
+
+module.exports = { handleAutoplay, getBaseSignature };

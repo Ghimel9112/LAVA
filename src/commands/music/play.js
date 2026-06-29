@@ -1,7 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder, ComponentType, MessageFlags } = require('discord.js');
 const YouTube = require('youtube-sr').default;
 const db = require('../../utils/db');
-const handleAutoplay = require('../../utils/autoplay');
+const { handleAutoplay, getBaseSignature } = require('../../utils/autoplay');
 
 // Per-guild exception cooldown to prevent message spam
 // Map<guildId, { lastSentAt: number, consecutiveFails: number }>
@@ -595,7 +595,7 @@ module.exports = {
                 if (currentQueue && currentQueue.player) {
                     const finishedTrack = currentQueue.songs[0];
                     if (finishedTrack) {
-                        const sig = `${finishedTrack.info.author} - ${finishedTrack.info.title}`.toLowerCase();
+                        const sig = getBaseSignature(finishedTrack.info.author, finishedTrack.info.title);
                         currentQueue.previousTracks.add(sig);
 
                         // Track as seed for autoplay recommendations
