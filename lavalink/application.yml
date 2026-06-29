@@ -66,9 +66,9 @@ logging:
 plugins:
   lavasrc:
     providers: # Custom providers for track loading. This is the default
+      - "scsearch:%QUERY%"
       - "ytsearch:\"%ISRC%\""
       - "ytsearch:%QUERY%"
-      - "amsearch:%QUERY%"
     sources:
       spotify: false # Disabled since it requires premium API
       applemusic: true # Enable Apple Music source as free alternative

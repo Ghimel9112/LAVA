@@ -320,30 +320,50 @@ module.exports = {
                     }
                 }
             } else {
-                // Text query: use Apple Music search first to avoid YouTube IP blocks
-                const res = await node.rest.resolve(`amsearch:${query}`);
-                console.log(`[DEBUG] Premium Apple Music Search: type=${res?.loadType}, dataIsArray=${Array.isArray(res?.data)}`);
-
-                const loadType = res?.loadType ? res.loadType.toLowerCase() : '';
-                const rawData = res?.data || res?.tracks;
-
-                if (rawData && loadType !== 'empty' && loadType !== 'error') {
-                    let tracks = Array.isArray(rawData) ? rawData : (rawData.tracks || []);
-                    tracks = tracks.filter(t => t && t.info && t.info.title);
-                    
-                    if (tracks.length > 0) {
-                        searchResult = { loadType: 'track', data: tracks[0] };
-                        console.log(`[DEBUG] Premium Apple Music match: ${tracks[0].info.title}`);
+                // Text query: try YouTube search first for Premium users
+                let ytFailed = false;
+                if (!interaction.client.youtubeDisabled) {
+                    try {
+                        const ytRes = await node.rest.resolve(`ytsearch:${query}`);
+                        console.log(`[DEBUG] Premium YouTube Search: type=${ytRes?.loadType}`);
+                        const ytLoadType = ytRes?.loadType ? ytRes.loadType.toLowerCase() : '';
+                        const ytData = ytRes?.data || ytRes?.tracks;
+                        
+                        if (ytData && ytLoadType !== 'empty' && ytLoadType !== 'error') {
+                            const tracks = Array.isArray(ytData) ? ytData : (ytData.tracks || []);
+                            if (tracks.length > 0) {
+                                searchResult = { loadType: 'track', data: tracks[0] };
+                                console.log(`[DEBUG] Premium YouTube match: ${tracks[0].info.title}`);
+                            } else {
+                                ytFailed = true;
+                            }
+                        } else {
+                            ytFailed = true;
+                        }
+                    } catch (e) {
+                        ytFailed = true;
                     }
+                } else {
+                    ytFailed = true;
                 }
 
-                // Fallback to YouTube only if Apple Music fails and YouTube is not disabled
-                if (!searchResult && !interaction.client.youtubeDisabled) {
-                    const ytRes = await node.rest.resolve(`ytsearch:${query}`);
-                    if (ytRes?.data) {
-                        const tracks = Array.isArray(ytRes.data) ? ytRes.data : (ytRes.data.tracks || []);
+                // Fallback to Apple Music/SoundCloud if YouTube fails
+                if (ytFailed || !searchResult) {
+                    await interaction.channel.send('⚠️ Could not load the song on YouTube. Falling back to a similar source (Apple Music/Soundcloud)...').catch(()=>{});
+                    
+                    const res = await node.rest.resolve(`amsearch:${query}`);
+                    console.log(`[DEBUG] Premium Fallback Apple Music Search: type=${res?.loadType}`);
+
+                    const loadType = res?.loadType ? res.loadType.toLowerCase() : '';
+                    const rawData = res?.data || res?.tracks;
+
+                    if (rawData && loadType !== 'empty' && loadType !== 'error') {
+                        let tracks = Array.isArray(rawData) ? rawData : (rawData.tracks || []);
+                        tracks = tracks.filter(t => t && t.info && t.info.title);
+                        
                         if (tracks.length > 0) {
                             searchResult = { loadType: 'track', data: tracks[0] };
+                            console.log(`[DEBUG] Premium Fallback match: ${tracks[0].info.title}`);
                         }
                     }
                 }
@@ -673,18 +693,57 @@ module.exports = {
 
                     const errMsg = d.exception?.message || '';
                     let userMessage;
-                    if (errMsg.includes('All clients failed to load the item')) {
-                        userMessage = '⚠️ This track cannot be played right now. The bot requires an update that is not yet available. Please try again later or use a different song.';
+                    
+                    if (errMsg.includes('All clients failed to load the item') || errMsg.includes('Invalid status code') || errMsg.includes('This video requires login')) {
+                        userMessage = '⚠️ Could not play the song from YouTube. Falling back to a similar source (Apple Music/Soundcloud)...';
+                        
+                        try {
+                            await q.textChannel.send({ embeds: [new EmbedBuilder().setColor('Orange').setDescription(userMessage)] });
+                        } catch (e) {}
+
+                        // Attempt to fallback using the title and artist of the failed track
+                        const failedTrack = q.songs[0];
+                        if (failedTrack && failedTrack.info) {
+                            const fallbackQuery = `${failedTrack.info.title} ${failedTrack.info.author || ''}`.trim();
+                            
+                            try {
+                                const fallbackRes = await node.rest.resolve(`amsearch:${fallbackQuery}`);
+                                const rawData = fallbackRes?.data || fallbackRes?.tracks;
+                                
+                                if (rawData) {
+                                    let tracks = Array.isArray(rawData) ? rawData : (rawData.tracks || []);
+                                    tracks = tracks.filter(t => t && t.info && t.info.title);
+                                    
+                                    if (tracks.length > 0) {
+                                        // Replace the failed track with the new fallback track
+                                        q.songs[0] = tracks[0];
+                                        // Reset consecutive fails since we are attempting a recovery
+                                        state.consecutiveFails = 0;
+                                        exceptionState.set(guildId, state);
+                                        
+                                        // Play the fallback track
+                                        q.player.playTrack({ encodedTrack: tracks[0].encoded });
+                                        return; // Do not trigger skip
+                                    }
+                                }
+                            } catch (fallbackErr) {
+                                console.error('[Fallback] Failed to resolve fallback track:', fallbackErr);
+                            }
+                        }
+                        
+                        userMessage = '⚠️ The fallback source also failed to find the track. Skipping to the next song.';
+                        try {
+                            await q.textChannel.send({ embeds: [new EmbedBuilder().setColor('Red').setDescription(userMessage)] });
+                        } catch (e) {}
                     } else {
                         userMessage = `⚠️ Error: ${errMsg}`;
+                        try {
+                            await q.textChannel.send({ embeds: [new EmbedBuilder().setColor('Red').setDescription(userMessage)] });
+                        } catch (e) {}
                     }
-
-                    try {
-                        await q.textChannel.send({ embeds: [new EmbedBuilder().setColor('Red').setDescription(userMessage)] });
-                    } catch (e) {}
                 }
 
-                // Skip to the next track (triggers 'end', which will reset consecutiveFails on success)
+                // Skip to the next track if fallback failed or it wasn't a youtube block
                 q.player.stopTrack();
             });
 
