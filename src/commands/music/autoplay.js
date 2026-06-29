@@ -34,7 +34,7 @@ module.exports = {
             // Improve the embed to show current autoplay state, current song, and a footer with queue length
             const embed = new EmbedBuilder()
                 .setColor(queue.autoplay ? 'Green' : 'Grey')
-                .setTitle(queue.autoplay ? '🔁 Autoplay Enabled' : '⏹️ Autoplay Disabled')
+                .setTitle(queue.autoplay ? '🔁 Autoplay Enabled' : '🔁 Autoplay Disabled')
                 .setDescription(`**Currently Playing:** ${currentSongName}`)
                 .setFooter({ text: `Songs left in queue: ${songsLeft}` });
 
