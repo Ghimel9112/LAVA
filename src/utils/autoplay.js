@@ -44,7 +44,7 @@ async function handleAutoplay(client, player, track, queue) {
 
         if (premium && !ytDisabled) {
             strategies.push(
-                { name: 'YouTube', prefix: 'ytsearch:' },
+                { name: 'YouTube Music', prefix: 'ytmsearch:' },
                 { name: 'Apple Music', prefix: 'amsearch:' },
                 { name: 'SoundCloud', prefix: 'scsearch:' }
             );
@@ -54,7 +54,7 @@ async function handleAutoplay(client, player, track, queue) {
                 { name: 'SoundCloud', prefix: 'scsearch:' }
             );
             if (!ytDisabled) {
-                strategies.push({ name: 'YouTube', prefix: 'ytsearch:' });
+                strategies.push({ name: 'YouTube Music', prefix: 'ytmsearch:' });
             }
         }
 
@@ -88,8 +88,8 @@ async function handleAutoplay(client, player, track, queue) {
         // -----------------------------------------------------------------
         if (candidates.length === 0) {
             try {
-                // If premium, prefer ytsearch for artist fallback, otherwise amsearch
-                const prefix = (premium && !ytDisabled) ? 'ytsearch:' : 'amsearch:';
+                // If premium, prefer ytmsearch for artist fallback, otherwise amsearch
+                const prefix = (premium && !ytDisabled) ? 'ytmsearch:' : 'amsearch:';
                 const query = `${prefix}${author}`;
                 const res = await node.rest.resolve(query);
 
