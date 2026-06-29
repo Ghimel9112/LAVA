@@ -152,7 +152,6 @@ async function setupCollector(message, player, queue, interaction) {
                 case 'autoplay':
                     queue.autoplay = !queue.autoplay;
                     await i.editReply({ components: createControlButtons(queue) });
-                    await i.followUp({ content: queue.autoplay ? '🔁 Autoplay enabled!' : '🔁 Autoplay disabled!', flags: MessageFlags.Ephemeral });
                     break;
                 case 'shuffle':
                     shuffleQueue(queue);
