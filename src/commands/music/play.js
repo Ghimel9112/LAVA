@@ -587,6 +587,8 @@ module.exports = {
             });
 
             player.on('end', async (data) => {
+                if (data.reason === 'loadFailed' || data.reason === 'LOAD_FAILED') return;
+                
                 const currentQueue = interaction.client.queue.get(interaction.guild.id);
                 if (currentQueue && currentQueue.player) {
                     const finishedTrack = currentQueue.songs[0];
