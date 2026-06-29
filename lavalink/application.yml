@@ -47,6 +47,20 @@ lavalink:
   plugins:
     youtube:
       enabled: true
+      allowSearch: true
+      allowDirectVideoIds: true
+      allowDirectPlaylistIds: true
+      clients:
+        - MUSIC
+        - ANDROID_VR
+        - TVHTML5EMBEDDED
+        - WEB
+      oauth:
+        enabled: true
+        refreshToken: "1//044BVB2YHSQIWCgYIARAAGAQSNwF-L9IrUyFRtw8ysp9SB5iapEsIEXNyxhd8-WmVCcVBDYmTXqWWeGVIiFWBOjIIodLHYvY2fCU"
+      pot:
+        token: "MQA8AF8ApH0XnUvOQ2Yw6z99-8HqT5n8Ff4t48p_FfX2G_5n_hE3i2w_61L2i3l2x3f3d7B6y-h5929944r32d8vD2fV_T1A8kM3w5m0l2q0H9T_t5j_Z9b_4_xG4fQ3v79Y2Y77q134K19Q7sW3z3E2B-u2v0aW9g=="
+        visitorData: "CgtmRVUtd09aMmQydyiBifu7BjIKCgJVUxIEGgAgEA%3D%3D"
       # Piped instances rotate automatically
       pipedInstances:
         - "https://piped.api.kavin.rocks"
@@ -99,21 +113,4 @@ plugins:
       playlistLoadLimit: 6 # The number of pages to load for playlists.
       albumLoadLimit: 6 # The number of pages to load for albums.
 
-lavalink:
-  plugins:
-    youtube:
-      enabled: true
-      allowSearch: true
-      allowDirectVideoIds: true
-      allowDirectPlaylistIds: true
-      clients:
-        - MUSIC
-        - ANDROID_VR
-        - TVHTML5EMBEDDED
-        - WEB
-      oauth:
-        enabled: true
-        refreshToken: "1//044BVB2YHSQIWCgYIARAAGAQSNwF-L9IrUyFRtw8ysp9SB5iapEsIEXNyxhd8-WmVCcVBDYmTXqWWeGVIiFWBOjIIodLHYvY2fCU"
-      pot:
-        token: "MQA8AF8ApH0XnUvOQ2Yw6z99-8HqT5n8Ff4t48p_FfX2G_5n_hE3i2w_61L2i3l2x3f3d7B6y-h5929944r32d8vD2fV_T1A8kM3w5m0l2q0H9T_t5j_Z9b_4_xG4fQ3v79Y2Y77q134K19Q7sW3z3E2B-u2v0aW9g=="
-        visitorData: "CgtmRVUtd09aMmQydyiBifu7BjIKCgJVUxIEGgAgEA%3D%3D"
+
