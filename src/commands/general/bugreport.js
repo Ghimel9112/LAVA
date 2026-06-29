@@ -17,10 +17,6 @@ module.exports = {
                 .setDescription('What you expected to happen')
                 .setRequired(false)),
     async execute(interaction) {
-        const ownerId = process.env.OWNER_ID;
-        if (!ownerId) {
-            return interaction.reply({ content: '❌ Owner ID is not configured. Cannot send report.', flags: MessageFlags.Ephemeral });
-        }
 
         const description = interaction.options.getString('description');
         const steps = interaction.options.getString('steps');
@@ -41,8 +37,8 @@ module.exports = {
         if (expected) embed.addFields({ name: '✅ Expected Behavior', value: expected });
 
         try {
-            const owner = await interaction.client.users.fetch(ownerId);
-            await owner.send({ embeds: [embed] });
+            const bugReportChannel = await interaction.client.channels.fetch('1521076407160012800');
+            await bugReportChannel.send({ embeds: [embed] });
 
             const confirmEmbed = new EmbedBuilder()
                 .setColor('Green')
@@ -50,7 +46,7 @@ module.exports = {
             await interaction.reply({ embeds: [confirmEmbed], flags: MessageFlags.Ephemeral });
         } catch (error) {
             console.error('Bug report send error:', error);
-            await interaction.reply({ content: '❌ Failed to send bug report (Developer DMs may be closed).', flags: MessageFlags.Ephemeral });
+            await interaction.reply({ content: '❌ Failed to send bug report.', flags: MessageFlags.Ephemeral });
         }
     },
 };
