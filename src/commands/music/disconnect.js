@@ -19,8 +19,9 @@ module.exports = {
 
         try {
             // Stop and clean up
-            queue.player.stopTrack();
             queue.isIntentionalLeave = true;
+            interaction.client.queue.delete(interaction.guild.id);
+            queue.player.stopTrack();
             await interaction.client.shoukaku.leaveVoiceChannel(interaction.guild.id);
 
             const embed = new EmbedBuilder()

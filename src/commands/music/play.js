@@ -131,8 +131,9 @@ async function setupCollector(message, player, queue, interaction) {
                     player.stopTrack();
                     break;
                 case 'stop':
-                    player.stopTrack();
                     queue.isIntentionalLeave = true;
+                    interaction.client.queue.delete(interaction.guild.id);
+                    player.stopTrack();
                     await interaction.client.shoukaku.leaveVoiceChannel(interaction.guild.id);
                     const disabledRows = i.message.components.map(row => {
                         const r = ActionRowBuilder.from(row);
