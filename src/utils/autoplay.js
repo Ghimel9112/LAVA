@@ -41,8 +41,12 @@ async function handleAutoplay(client, player, track, queue) {
         // DEFINE STRATEGIES
         // -----------------------------------------------------------------
         const strategies = [];
+        const isYouTube = track.info.sourceName === 'youtube' || track.info.sourceName === 'youtube-music';
 
         if (premium && !ytDisabled) {
+            if (isYouTube) {
+                strategies.push({ name: 'YouTube Mix (Same Genre)', type: 'mix' });
+            }
             strategies.push(
                 { name: 'YouTube Music', prefix: 'ytmsearch:' },
                 { name: 'Apple Music', prefix: 'amsearch:' },
@@ -54,6 +58,9 @@ async function handleAutoplay(client, player, track, queue) {
                 { name: 'SoundCloud', prefix: 'scsearch:' }
             );
             if (!ytDisabled) {
+                if (isYouTube) {
+                    strategies.push({ name: 'YouTube Mix (Same Genre)', type: 'mix' });
+                }
                 strategies.push({ name: 'YouTube Music', prefix: 'ytmsearch:' });
             }
         }
@@ -65,7 +72,13 @@ async function handleAutoplay(client, player, track, queue) {
             if (candidates.length > 0) break;
 
             try {
-                const query = `${strategy.prefix}${author} - ${title}`;
+                let query = '';
+                if (strategy.type === 'mix') {
+                    query = `https://www.youtube.com/watch?v=${identifier}&list=RD${identifier}`;
+                } else {
+                    query = `${strategy.prefix}${author} - ${title}`;
+                }
+                
                 const res = await node.rest.resolve(query);
 
                 const loadType = res?.loadType ? res.loadType.toLowerCase() : '';
