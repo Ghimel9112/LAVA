@@ -20,8 +20,8 @@ module.exports = {
         try {
             // Stop and clean up
             queue.player.stopTrack();
+            queue.isIntentionalLeave = true;
             await interaction.client.shoukaku.leaveVoiceChannel(interaction.guild.id);
-            interaction.client.queue.delete(interaction.guild.id);
 
             const embed = new EmbedBuilder()
                 .setColor('Red')

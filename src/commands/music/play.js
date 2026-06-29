@@ -132,8 +132,8 @@ async function setupCollector(message, player, queue, interaction) {
                     break;
                 case 'stop':
                     player.stopTrack();
+                    queue.isIntentionalLeave = true;
                     await interaction.client.shoukaku.leaveVoiceChannel(interaction.guild.id);
-                    interaction.client.queue.delete(interaction.guild.id);
                     const disabledRows = i.message.components.map(row => {
                         const r = ActionRowBuilder.from(row);
                         r.components.forEach(c => c.setDisabled(true));
@@ -633,12 +633,12 @@ module.exports = {
 
                         console.log('[Autoplay] No valid candidates found.');
                         if (!currentQueue.twentyFourSeven) {
+                            currentQueue.isIntentionalLeave = true;
                             await interaction.client.shoukaku.leaveVoiceChannel(interaction.guild.id);
-                            interaction.client.queue.delete(interaction.guild.id);
                         }
                     } else if (!currentQueue.twentyFourSeven) {
+                        currentQueue.isIntentionalLeave = true;
                         await interaction.client.shoukaku.leaveVoiceChannel(interaction.guild.id);
-                        interaction.client.queue.delete(interaction.guild.id);
                     }
                 }
             });
@@ -651,10 +651,12 @@ module.exports = {
                         if (closedQueue.lastMessage) {
                             try { await closedQueue.lastMessage.delete(); } catch (e) { }
                         }
-                        const dcEmbed = new EmbedBuilder()
-                            .setColor('Red')
-                            .setDescription('⚠️ I was disconnected from the voice channel. The queue has been cleared.');
-                        await closedQueue.textChannel.send({ embeds: [dcEmbed] });
+                        if (!closedQueue.isIntentionalLeave) {
+                            const dcEmbed = new EmbedBuilder()
+                                .setColor('Red')
+                                .setDescription('⚠️ I was disconnected from the voice channel. The queue has been cleared.');
+                            await closedQueue.textChannel.send({ embeds: [dcEmbed] });
+                        }
                     } catch (e) {
                         console.error('Failed to send disconnect message:', e);
                     }
@@ -685,8 +687,8 @@ module.exports = {
                                 .setDescription('⚠️ Multiple tracks failed to load. Stopping playback to avoid spam. Please try a different song or source.')]
                         });
                     } catch (e) {}
+                    q.isIntentionalLeave = true;
                     await interaction.client.shoukaku.leaveVoiceChannel(guildId);
-                    interaction.client.queue.delete(guildId);
                     return;
                 }
 
@@ -715,7 +717,7 @@ module.exports = {
                             const fallbackQuery = `${failedTrack.info.title} ${failedTrack.info.author || ''}`.trim();
                             
                             try {
-                                const fallbackRes = await node.rest.resolve(`amsearch:${fallbackQuery}`);
+                                const fallbackRes = await node.rest.resolve(`scsearch:${fallbackQuery}`);
                                 const rawData = fallbackRes?.data || fallbackRes?.tracks;
                                 
                                 if (rawData) {
