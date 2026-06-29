@@ -701,8 +701,12 @@ module.exports = {
                     if (errMsg.includes('All clients failed to load the item') || errMsg.includes('Invalid status code') || errMsg.includes('This video requires login')) {
                         userMessage = '⚠️ Could not play the song from YouTube. Falling back to a similar source (Apple Music/Soundcloud)...';
                         
+                        let fallbackMsg;
                         try {
-                            await q.textChannel.send({ embeds: [new EmbedBuilder().setColor('Orange').setDescription(userMessage)] });
+                            fallbackMsg = await q.textChannel.send({ embeds: [new EmbedBuilder().setColor('Orange').setDescription(userMessage)] });
+                            setTimeout(() => {
+                                if (fallbackMsg) fallbackMsg.delete().catch(() => {});
+                            }, 5000);
                         } catch (e) {}
 
                         // Attempt to fallback using the title and artist of the failed track
@@ -736,18 +740,25 @@ module.exports = {
                         
                         userMessage = '⚠️ The fallback source also failed to find the track. Skipping to the next song.';
                         try {
-                            await q.textChannel.send({ embeds: [new EmbedBuilder().setColor('Red').setDescription(userMessage)] });
+                            const failMsg = await q.textChannel.send({ embeds: [new EmbedBuilder().setColor('Red').setDescription(userMessage)] });
+                            setTimeout(() => {
+                                if (failMsg) failMsg.delete().catch(() => {});
+                            }, 5000);
                         } catch (e) {}
                     } else {
                         userMessage = `⚠️ Error: ${errMsg}`;
                         try {
-                            await q.textChannel.send({ embeds: [new EmbedBuilder().setColor('Red').setDescription(userMessage)] });
+                            const errMsgObj = await q.textChannel.send({ embeds: [new EmbedBuilder().setColor('Red').setDescription(userMessage)] });
+                            setTimeout(() => {
+                                if (errMsgObj) errMsgObj.delete().catch(() => {});
+                            }, 5000);
                         } catch (e) {}
                     }
                 }
 
-                // Skip to the next track if fallback failed or it wasn't a youtube block
-                q.player.stopTrack();
+                // Skip to the next track by artificially emitting an end event, 
+                // since Lavalink won't emit 'stopped' if it's already stopped by an exception.
+                q.player.emit('end', { reason: 'stopped' });
             });
 
             const newQueue = {
