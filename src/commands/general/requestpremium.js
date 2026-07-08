@@ -10,6 +10,10 @@ module.exports = {
             return interaction.reply({ content: 'This server is already Premium!', flags: MessageFlags.Ephemeral });
         }
 
+        if (db.hasPendingRequest(interaction.guild.id)) {
+            return interaction.reply({ content: '⏳ This server already has a pending premium request. Please wait for the owner to respond.', flags: MessageFlags.Ephemeral });
+        }
+
         const ownerId = process.env.OWNER_ID;
         if (!ownerId) {
             return interaction.reply({ content: 'Owner ID is not configured. Cannot make request.', flags: MessageFlags.Ephemeral });
@@ -38,6 +42,7 @@ module.exports = {
         try {
             const owner = await interaction.client.users.fetch(ownerId);
             await owner.send({ embeds: [embed], components: [row] });
+            db.addRequest(interaction.guild.id);
             await interaction.reply({ content: 'Premium request sent to the bot owner!', flags: MessageFlags.Ephemeral });
         } catch (error) {
             console.error(error);

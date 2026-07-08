@@ -140,6 +140,7 @@ module.exports = {
 
                 if (action === 'accept') {
                     db.addPremium(guildId);
+                    db.removeRequest(guildId);
                     const embed = new EmbedBuilder()
                         .setColor('Green')
                         .setTitle('Premium Request Accepted')
@@ -161,6 +162,7 @@ module.exports = {
                         console.error('Failed to notify requester:', err);
                     }
                 } else if (action === 'reject') {
+                    db.removeRequest(guildId);
                     const embed = new EmbedBuilder()
                         .setColor('Red')
                         .setTitle('Premium Request Rejected')
