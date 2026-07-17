@@ -1,10 +1,15 @@
 const { Events, REST, Routes, ActivityType } = require('discord.js');
+const premiumService = require('../services/premiumService');
 
 module.exports = {
     name: Events.ClientReady,
     once: true,
     async execute(client) {
         console.log(`Ready! Logged in as ${client.user.tag}`);
+
+        // Initial premium sync + recurring 5-minute interval
+        await premiumService.syncAll();
+        setInterval(() => premiumService.syncAll(), 5 * 60 * 1000);
 
         // Construct and prepare an instance of the REST module
         const rest = new REST().setToken(process.env.TOKEN);

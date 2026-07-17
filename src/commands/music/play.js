@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder, ComponentType, MessageFlags } = require('discord.js');
 const YouTube = require('youtube-sr').default;
-const db = require('../../utils/db');
+const premiumService = require('../../services/premiumService');
 const { handleAutoplay, getBaseSignature } = require('../../utils/autoplay');
 
 // Per-guild exception cooldown to prevent message spam
@@ -273,7 +273,7 @@ module.exports = {
 
         // 1. RESOLVE SEARCH
         let searchResult;
-        const isPremium = db.isPremium(interaction.guild.id);
+        const isPremium = premiumService.premiumGuilds.has(interaction.guild.id);
         console.log(`[DEBUG] Guild: ${interaction.guild.id}, Premium: ${isPremium}, Query: ${query}`);
 
         if (isPremium) {

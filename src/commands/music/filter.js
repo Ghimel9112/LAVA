@@ -1,4 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { requirePremium } = require('../../utils/requirePremium');
 
 // Lavalink filter presets
 const FILTER_PRESETS = {
@@ -100,6 +101,9 @@ module.exports = {
             sub.setName('reset')
                 .setDescription('Remove all applied filters')),
     async execute(interaction) {
+        // Premium check
+        if (!await requirePremium(interaction)) return;
+
         const queue = interaction.client.queue.get(interaction.guild.id);
         if (!queue || !queue.songs[0]) {
             return interaction.reply({ content: '❌ Nothing is playing right now.', ephemeral: true });

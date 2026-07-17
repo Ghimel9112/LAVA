@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ComponentType } = require('discord.js');
 const { formatDuration, paginatedEmbed } = require('../../utils/helpers');
-const db = require('../../utils/db');
+const { requirePremium } = require('../../utils/requirePremium');
 const fs = require('fs');
 const path = require('path');
 
@@ -49,12 +49,7 @@ module.exports = {
                 .addStringOption(opt => opt.setName('name').setDescription('Name of the queue').setRequired(true))),
     async execute(interaction) {
         // Premium check
-        if (!db.isPremium(interaction.guild.id)) {
-            return interaction.reply({
-                content: '⭐ This is a **premium** command. Use `/requestpremium` to request premium for your server!',
-                ephemeral: true
-            });
-        }
+        if (!await requirePremium(interaction)) return;
 
         const sub = interaction.options.getSubcommand();
         const userId = interaction.user.id;

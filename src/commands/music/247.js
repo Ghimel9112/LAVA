@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
-const db = require('../../utils/db');
+const { requirePremium } = require('../../utils/requirePremium');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -7,12 +7,7 @@ module.exports = {
         .setDescription('Toggle 24/7 mode — keep the bot in the voice channel indefinitely. (Premium only)'),
     async execute(interaction) {
         // Premium check
-        if (!db.isPremium(interaction.guild.id)) {
-            return interaction.reply({
-                content: '⭐ This is a **premium-only** feature. Request premium access with `/requestpremium`.',
-                flags: MessageFlags.Ephemeral
-            });
-        }
+        if (!await requirePremium(interaction)) return;
 
         const queue = interaction.client.queue.get(interaction.guild.id);
 

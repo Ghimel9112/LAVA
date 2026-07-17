@@ -4,6 +4,13 @@ const { Shoukaku, Connectors } = require('shoukaku');
 const fs = require('fs');
 const path = require('path');
 
+// Fail fast — premium sync cannot work without this secret
+if (!process.env.LAVA_BOT_SECRET) {
+    console.error('[Startup] FATAL: LAVA_BOT_SECRET is not set. Add it to your .env file and restart.');
+    process.exit(1);
+}
+
+
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,

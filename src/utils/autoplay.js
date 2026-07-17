@@ -1,5 +1,6 @@
 const { EmbedBuilder } = require('discord.js');
-const { isPremium } = require('./db');
+const premiumService = require('../services/premiumService');
+
 
 /**
  * Handles autoplay logic with Safe Mode for non-premium guilds.
@@ -18,7 +19,7 @@ async function handleAutoplay(client, player, track, queue) {
         const ytDisabled = client.youtubeDisabled || false;
 
         const guildId = player.guildId;
-        const premium = isPremium(guildId);
+        const premium = await premiumService.isPremium(guildId);
 
         const identifier = track.info.identifier;
         const author = track.info.author;

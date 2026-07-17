@@ -5,13 +5,17 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "nodemon src/index.js"
+    "dev": "nodemon src/index.js",
+    "test": "jest"
   },
   "dependencies": {
     "discord.js": "^14.16.0",
     "dotenv": "^16.4.0",
     "shoukaku": "^4.3.0",
     "youtube-sr": "^4.3.12"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
   },
   "keywords": [],
   "author": "",

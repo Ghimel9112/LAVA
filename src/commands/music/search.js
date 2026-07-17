@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ComponentType } = require('discord.js');
 const { formatDuration } = require('../../utils/helpers');
-const db = require('../../utils/db');
+const premiumService = require('../../services/premiumService');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -20,7 +20,7 @@ module.exports = {
         const node = interaction.client.shoukaku.getIdealNode();
         if (!node) return interaction.editReply('❌ No Lavalink node is available.');
 
-        const isPremium = db.isPremium(interaction.guild.id);
+        const isPremium = premiumService.premiumGuilds.has(interaction.guild.id);
         const searchPrefix = (isPremium && !interaction.client.youtubeDisabled) ? 'ytsearch:' : 'amsearch:';
 
         const res = await node.rest.resolve(`${searchPrefix}${query}`);
