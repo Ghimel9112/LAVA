@@ -273,7 +273,7 @@ module.exports = {
 
         // 1. RESOLVE SEARCH
         let searchResult;
-        const isPremium = premiumService.premiumGuilds.has(interaction.guild.id);
+        const isPremium = await premiumService.isPremium(interaction.guild.id);
         console.log(`[DEBUG] Guild: ${interaction.guild.id}, Premium: ${isPremium}, Query: ${query}`);
 
         if (isPremium) {
@@ -460,8 +460,8 @@ module.exports = {
                 }
             }
 
-            // Strategy 4: YouTube search ONLY if enabled and other sources failed
-            if (candidates.length === 0 && !interaction.client.youtubeDisabled) {
+            // Strategy 4: YouTube search ONLY for premium guilds where other sources failed
+            if (candidates.length === 0 && isPremium && !interaction.client.youtubeDisabled) {
                 try {
                     const ytResult = await node.rest.resolve(`ytsearch:${audioQuery}`);
                     const ytLoadType = ytResult?.loadType ? ytResult.loadType.toLowerCase() : '';

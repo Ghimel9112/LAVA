@@ -148,7 +148,7 @@ async function handleAutoplay(client, player, track, queue) {
         // -----------------------------------------------------------------
         if (candidates.length === 0) {
             try {
-                // If premium, prefer ytmsearch for artist fallback, otherwise amsearch
+                // Non-premium: only Apple Music. Premium: YouTube Music preferred.
                 const prefix = (premium && !ytDisabled) ? 'ytmsearch:' : 'amsearch:';
                 const query = `${prefix}${author}`;
                 const res = await node.rest.resolve(query);
