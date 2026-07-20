@@ -53,12 +53,40 @@ async function handleAutoplay(client, player, track, queue) {
             return false;
         };
 
+        const getCleanTitle = (title) => {
+            return (title || '').toLowerCase()
+                .replace(/\(.*?\)/g, '')
+                .replace(/\[.*?\]/g, '')
+                .replace(/remix/g, '')
+                .replace(/mix/g, '')
+                .replace(/radio edit/g, '')
+                .replace(/official video/g, '')
+                .replace(/official audio/g, '')
+                .replace(/lyric video/g, '')
+                .replace(/[^a-z0-9]/g, '')
+                .trim();
+        };
+
         const getNewTracks = (tracks) => {
             return tracks.filter(t => {
                 if (!t || !t.info || t.info.identifier === identifier) return false;
                 if (isUnwantedTrack(t.info.title, t.info.author, title, author)) return false;
+                
                 const sig = getBaseSignature(t.info.author, t.info.title);
-                return !history.has(sig);
+                if (history.has(sig)) return false;
+                
+                // Fuzzy check against history titles
+                const candidateCleanTitle = getCleanTitle(t.info.title);
+                if (candidateCleanTitle.length > 5) {
+                    for (const pastSig of history) {
+                        const pastTitle = pastSig.split('-').slice(1).join('-');
+                        if (pastTitle.length > 5 && (candidateCleanTitle.includes(pastTitle) || pastTitle.includes(candidateCleanTitle))) {
+                            return false;
+                        }
+                    }
+                }
+                
+                return true;
             });
         };
 
@@ -82,12 +110,6 @@ async function handleAutoplay(client, player, track, queue) {
                 { name: 'Apple Music', prefix: 'amsearch:' },
                 { name: 'SoundCloud', prefix: 'scsearch:' }
             );
-            if (!ytDisabled) {
-                if (isYouTube) {
-                    strategies.push({ name: 'YouTube Mix (Same Genre)', type: 'mix' });
-                }
-                strategies.push({ name: 'YouTube Music', prefix: 'ytmsearch:' });
-            }
         }
 
         // -----------------------------------------------------------------
