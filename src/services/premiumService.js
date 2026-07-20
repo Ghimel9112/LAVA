@@ -14,7 +14,7 @@ const PER_GUILD_TTL_MS = 60 * 1000; // 60 seconds
  */
 function authHeaders() {
     return {
-        'X-Bot-Secret': process.env.LAVA_BOT_SECRET,
+        'Authorization': `Bearer ${process.env.LAVA_BOT_SECRET}`,
         'Content-Type': 'application/json',
     };
 }
@@ -141,6 +141,25 @@ const premiumService = {
         } catch (err) {
             console.warn(`[PremiumService] isPremium(${id}) error — using cached value:`, err.message);
             return cached ? cached.value : false;
+        }
+    },
+
+    /**
+     * Fetch the full premium data for a specific guild from the website.
+     * @param {string} guildId
+     * @returns {Promise<Object|null>}
+     */
+    async getPremiumInfo(guildId) {
+        const id = String(guildId);
+        try {
+            const res = await fetchWithTimeout(`${BASE_URL}/api/public/premium/${id}`);
+            if (!res.ok) {
+                return null;
+            }
+            return await res.json();
+        } catch (err) {
+            console.warn(`[PremiumService] getPremiumInfo(${id}) error:`, err.message);
+            return null;
         }
     },
 };

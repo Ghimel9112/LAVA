@@ -42,7 +42,7 @@ Premium status is managed via [lavabot.site](https://lavabot.site) and kept in s
 ### Required `.env` additions
 
 ```env
-# Secret shared with lavabot.site — never commit this value
+# Secret shared with lavabot.site. Passed as a Bearer token in the Authorization header.
 LAVA_BOT_SECRET=your_secret_here
 
 # Optional: override the API base (useful for staging)
@@ -54,7 +54,13 @@ LAVA_BOT_SECRET=your_secret_here
 | Command | Description |
 |---|---|
 | `/premium refresh` | Force an immediate full sync and report the cached count |
-| `/premium status [guild_id]` | Show the premium status of a guild (defaults to the current server) |
+
+### User Commands
+
+| Command | Description |
+|---|---|
+| `/premium status [guild_id]` | Show the premium status of a guild (defaults to the current server), including subscription end date |
+| `/premium manage` | Link to the Stripe customer portal on lavabot.site to manage your subscription |
 
 ### Premium-Gated Features
 
