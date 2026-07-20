@@ -1,6 +1,6 @@
 'use strict';
 
-const BASE_URL = process.env.LAVA_URL || process.env.LAVA_API_BASE || 'https://lavabot.site';
+const BASE_URL = process.env.LAVA_API_BASE || 'https://lavabot.site';
 const TIMEOUT_MS = 8000;
 const PER_GUILD_TTL_MS = 60 * 1000; // 60 seconds
 
