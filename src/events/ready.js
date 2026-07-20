@@ -42,12 +42,10 @@ module.exports = {
             `Need help? Use: /help`,
             () => `${client.guilds.cache.reduce((a, b) => a + b.memberCount, 0)} Users!`,
             () => `${client.guilds.cache.size} Servers!`,
-            `🚁 𝓐𝓽𝓪𝓬 𝓓𝓮 𝓔𝓵𝓲𝓬𝓸𝓹𝓽𝓮𝓻𝓮 🚁`,
             `Enjoy using this bot! :)`,
             `The bot is still in development!`,
             `lavabot.site`,
             `Lava Network`,
-            `Want to test the premium features? use /requestpremium`,
         ];
 
         let statusIndex = 0;
