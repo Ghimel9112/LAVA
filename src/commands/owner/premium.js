@@ -120,19 +120,61 @@ module.exports = {
             }
 
             await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-            
-            const guilds = Array.from(premiumService.premiumGuilds);
-            const content = guilds.length > 0 
-                ? guilds.map(id => `• \`${id}\``).join('\n')
-                : 'No premium guilds found.';
 
-            const embed = new EmbedBuilder()
-                .setColor(0x57F287)
-                .setTitle(`💎 Premium Guilds (${guilds.length})`)
-                .setDescription(content)
-                .setTimestamp();
+            const guildIds = Array.from(premiumService.premiumGuilds);
 
-            return interaction.editReply({ embeds: [embed] });
+            if (guildIds.length === 0) {
+                const emptyEmbed = new EmbedBuilder()
+                    .setColor(0xED4245)
+                    .setTitle('💎 Premium Guilds (0)')
+                    .setDescription('No premium guilds found.')
+                    .setTimestamp();
+                return interaction.editReply({ embeds: [emptyEmbed] });
+            }
+
+            // Resolve each guild + owner from the bot's cache / API
+            const lines = await Promise.all(guildIds.map(async (id) => {
+                try {
+                    const guild = interaction.client.guilds.cache.get(id)
+                        ?? await interaction.client.guilds.fetch(id).catch(() => null);
+
+                    if (!guild) return `• \`${id}\` — *(bot not in this server)*`;
+
+                    let ownerTag = 'Unknown';
+                    try {
+                        const owner = await guild.fetchOwner();
+                        ownerTag = `${owner.user.tag} (\`${owner.id}\`)`;
+                    } catch (_) { /* owner fetch failed */ }
+
+                    return `• **${guild.name}** [\`${id}\`]\n  👑 Owner: ${ownerTag}`;
+                } catch {
+                    return `• \`${id}\` — *(fetch failed)*`;
+                }
+            }));
+
+            // Discord embeds cap at 4096 chars — chunk if needed
+            const chunks = [];
+            let current = '';
+            for (const line of lines) {
+                if ((current + '\n' + line).length > 3900) {
+                    chunks.push(current);
+                    current = line;
+                } else {
+                    current = current ? current + '\n\n' + line : line;
+                }
+            }
+            if (current) chunks.push(current);
+
+            const embeds = chunks.map((chunk, i) => {
+                const e = new EmbedBuilder()
+                    .setColor(0x57F287)
+                    .setDescription(chunk)
+                    .setTimestamp();
+                if (i === 0) e.setTitle(`💎 Premium Guilds (${guildIds.length})`);
+                return e;
+            });
+
+            return interaction.editReply({ embeds });
         }
     },
 };
