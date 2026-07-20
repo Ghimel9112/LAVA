@@ -19,7 +19,7 @@ async function requirePremium(interaction) {
     if (active) return true;
 
     await interaction.reply({
-        content: '⭐ **This is a premium feature.**\nUpgrade your server at <https://lavabot.site/premium> to unlock it.',
+        content: '⭐ **This is a premium feature.**\nUse `/premium manage` or visit <https://lavabot.site/premium> to unlock it.',
         flags: MessageFlags.Ephemeral,
     });
     return false;

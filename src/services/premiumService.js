@@ -1,11 +1,6 @@
 'use strict';
 
-const fs = require('fs');
-const path = require('path');
-
-const DB_PATH = path.join(__dirname, '../../premium_guilds.json');
-const TMP_PATH = DB_PATH + '.tmp';
-const BASE_URL = process.env.LAVA_API_BASE || 'https://lavabot.site';
+const BASE_URL = process.env.LAVA_URL || process.env.LAVA_API_BASE || 'https://lavabot.site';
 const TIMEOUT_MS = 8000;
 const PER_GUILD_TTL_MS = 60 * 1000; // 60 seconds
 
@@ -38,27 +33,7 @@ async function fetchWithTimeout(url) {
     }
 }
 
-/**
- * Atomically overwrite the local JSON file.
- * Write to a .tmp file first, then rename so readers never see a partial write.
- * @param {string[]} guilds
- */
-function writeDbAtomic(guilds) {
-    fs.writeFileSync(TMP_PATH, JSON.stringify(guilds, null, 2), 'utf8');
-    fs.renameSync(TMP_PATH, DB_PATH);
-}
 
-/**
- * Read the local JSON file; return an empty array on any error.
- * @returns {string[]}
- */
-function readDb() {
-    try {
-        return JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
-    } catch {
-        return [];
-    }
-}
 
 // ---------------------------------------------------------------------------
 // Singleton
@@ -66,7 +41,7 @@ function readDb() {
 
 const premiumService = {
     /** @type {Set<string>} */
-    premiumGuilds: new Set(readDb()),
+    premiumGuilds: new Set(),
 
     /** Per-guild cache: Map<guildId, { value: boolean, expiresAt: number }> */
     _perGuildCache: new Map(),
@@ -88,7 +63,6 @@ const premiumService = {
             const data = await res.json();
             const guilds = Array.isArray(data.guilds) ? data.guilds.map(String) : [];
 
-            writeDbAtomic(guilds);
             this.premiumGuilds = new Set(guilds);
             // Invalidate per-guild cache so next call re-fetches fresh data
             this._perGuildCache.clear();

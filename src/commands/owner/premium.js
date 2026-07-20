@@ -23,7 +23,11 @@ module.exports = {
         .addSubcommand(sub =>
             sub
                 .setName('manage')
-                .setDescription('Manage your premium subscription')),
+                .setDescription('Manage your premium subscription'))
+        .addSubcommand(sub =>
+            sub
+                .setName('list')
+                .setDescription('List all premium guild IDs (Owner only)')),
 
     async execute(interaction) {
         const sub = interaction.options.getSubcommand();
@@ -62,8 +66,17 @@ module.exports = {
 
             let periodInfo = 'Unknown';
             if (info && info.current_period_end) {
-                const date = new Date(info.current_period_end * 1000); // Unix timestamp
-                periodInfo = `<t:${Math.floor(date.getTime() / 1000)}:R>`; // Discord relative timestamp
+                // Check if it's an ISO string or a Unix timestamp
+                let date;
+                if (typeof info.current_period_end === 'string') {
+                    date = new Date(info.current_period_end);
+                } else {
+                    date = new Date(info.current_period_end * 1000);
+                }
+                
+                if (!isNaN(date.getTime())) {
+                    periodInfo = `<t:${Math.floor(date.getTime() / 1000)}:R>`; // Discord relative timestamp
+                }
             } else if (info && info.subscription_period) {
                  periodInfo = info.subscription_period;
             }
@@ -94,6 +107,32 @@ module.exports = {
                 .setTimestamp();
 
             return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+        }
+
+        // ── /premium list ─────────────────────────────────────────────────
+        if (sub === 'list') {
+            // Owner-only guard for list
+            if (interaction.user.id !== process.env.OWNER_ID) {
+                return interaction.reply({
+                    content: '❌ This command is restricted to the bot owner.',
+                    flags: MessageFlags.Ephemeral,
+                });
+            }
+
+            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+            
+            const guilds = Array.from(premiumService.premiumGuilds);
+            const content = guilds.length > 0 
+                ? guilds.map(id => `• \`${id}\``).join('\n')
+                : 'No premium guilds found.';
+
+            const embed = new EmbedBuilder()
+                .setColor(0x57F287)
+                .setTitle(`💎 Premium Guilds (${guilds.length})`)
+                .setDescription(content)
+                .setTimestamp();
+
+            return interaction.editReply({ embeds: [embed] });
         }
     },
 };
