@@ -7,6 +7,9 @@ module.exports = {
     async execute(client) {
         console.log(`Ready! Logged in as ${client.user.tag}`);
 
+        // Increase listener limit to prevent AsyncEventEmitter warnings from Shoukaku
+        client.ws.shards.forEach(shard => shard.setMaxListeners(50));
+
         // Initial premium sync + recurring 5-minute interval
         await premiumService.syncAll();
         setInterval(() => premiumService.syncAll(), 5 * 60 * 1000);
