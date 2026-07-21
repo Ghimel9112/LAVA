@@ -36,7 +36,7 @@ lavalink:
     soundcloudConfig:
       enabled: true
       # Add client ID if you have one (optional)
-      # clientId: "your-soundcloud-client-id"
+      clientId: "Mxv2e5wxnWei6krLywjIXpztX7S0VCeK"
     # Spotify metadata (requires Lavalink 4+ with source manager)
     # spotifyConfig:
     #   enabled: true
