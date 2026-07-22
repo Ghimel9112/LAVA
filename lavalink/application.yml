@@ -70,7 +70,7 @@ plugins:
       - "ytsearch:\"%ISRC%\""
       - "ytsearch:%QUERY%"
     sources:
-      spotify: false # Disabled since it requires premium API
+      spotify: true # Enabled to allow Spotify links
       applemusic: true # Enable Apple Music source as free alternative
       deezer: false # Enable Deezer source
       yandexmusic: false # Enable Yandex Music source

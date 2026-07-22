@@ -17,6 +17,10 @@ module.exports = {
         .setName('queue')
         .setDescription('View and manage the current music queue.'),
     async execute(interaction) {
+        if (!interaction.guild) {
+            return interaction.reply({ content: 'This command can only be used in a server!', flags: MessageFlags.Ephemeral });
+        }
+
         const queue = interaction.client.queue.get(interaction.guild.id);
 
         if (!queue || !queue.songs.length) {
