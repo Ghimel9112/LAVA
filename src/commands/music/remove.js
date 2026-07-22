@@ -12,17 +12,17 @@ module.exports = {
     async execute(interaction) {
         const queue = interaction.client.queue.get(interaction.guild.id);
         if (!queue || queue.songs.length < 2) {
-            return interaction.reply({ content: '❌ The queue has no tracks to remove.', ephemeral: true });
+            return interaction.reply({ content: '❌ The queue has no tracks to remove.', flags: MessageFlags.Ephemeral });
         }
 
         if (!interaction.member.voice.channelId || interaction.member.voice.channelId !== interaction.guild.members.me.voice?.channelId) {
-            return interaction.reply({ content: '❌ You need to be in the same voice channel!', ephemeral: true });
+            return interaction.reply({ content: '❌ You need to be in the same voice channel!', flags: MessageFlags.Ephemeral });
         }
 
         const position = interaction.options.getInteger('position');
 
         if (position >= queue.songs.length) {
-            return interaction.reply({ content: `❌ Invalid position. The queue has **${queue.songs.length - 1}** tracks.`, ephemeral: true });
+            return interaction.reply({ content: `❌ Invalid position. The queue has **${queue.songs.length - 1}** tracks.`, flags: MessageFlags.Ephemeral });
         }
 
         const [removed] = queue.songs.splice(position, 1);

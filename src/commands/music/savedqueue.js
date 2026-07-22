@@ -62,11 +62,11 @@ module.exports = {
                 const name = interaction.options.getString('name').substring(0, 20);
                 const queue = interaction.client.queue.get(interaction.guild.id);
                 if (!queue || !queue.songs.length) {
-                    return interaction.reply({ content: '❌ No queue to save. Play something first!', ephemeral: true });
+                    return interaction.reply({ content: '❌ No queue to save. Play something first!', flags: MessageFlags.Ephemeral });
                 }
 
                 if (allQueues[userId][name]) {
-                    return interaction.reply({ content: `❌ A queue named \`${name}\` already exists. Delete it first or use a different name.`, ephemeral: true });
+                    return interaction.reply({ content: `❌ A queue named \`${name}\` already exists. Delete it first or use a different name.`, flags: MessageFlags.Ephemeral });
                 }
 
                 const tracks = queue.songs.map(t => ({
@@ -91,11 +91,11 @@ module.exports = {
                 const name = interaction.options.getString('name');
                 const saved = allQueues[userId]?.[name];
                 if (!saved || !saved.length) {
-                    return interaction.reply({ content: `❌ No saved queue found with name \`${name}\`.`, ephemeral: true });
+                    return interaction.reply({ content: `❌ No saved queue found with name \`${name}\`.`, flags: MessageFlags.Ephemeral });
                 }
 
                 const { channel } = interaction.member.voice;
-                if (!channel) return interaction.reply({ content: '❌ Join a voice channel first!', ephemeral: true });
+                if (!channel) return interaction.reply({ content: '❌ Join a voice channel first!', flags: MessageFlags.Ephemeral });
 
                 await interaction.deferReply();
 
@@ -155,7 +155,7 @@ module.exports = {
                 const names = Object.keys(userQueues || {});
 
                 if (!names.length) {
-                    return interaction.reply({ content: '📭 You have no saved queues. Use `/savedqueue save` while playing music!', ephemeral: true });
+                    return interaction.reply({ content: '📭 You have no saved queues. Use `/savedqueue save` while playing music!', flags: MessageFlags.Ephemeral });
                 }
 
                 const embed = new EmbedBuilder()
@@ -169,7 +169,7 @@ module.exports = {
                 const name = interaction.options.getString('name');
                 const saved = allQueues[userId]?.[name];
                 if (!saved || !saved.length) {
-                    return interaction.reply({ content: `❌ No saved queue found with name \`${name}\`.`, ephemeral: true });
+                    return interaction.reply({ content: `❌ No saved queue found with name \`${name}\`.`, flags: MessageFlags.Ephemeral });
                 }
 
                 await interaction.deferReply();
@@ -196,7 +196,7 @@ module.exports = {
             case 'delete': {
                 const name = interaction.options.getString('name');
                 if (!allQueues[userId]?.[name]) {
-                    return interaction.reply({ content: `❌ No saved queue found with name \`${name}\`.`, ephemeral: true });
+                    return interaction.reply({ content: `❌ No saved queue found with name \`${name}\`.`, flags: MessageFlags.Ephemeral });
                 }
 
                 delete allQueues[userId][name];
@@ -211,12 +211,12 @@ module.exports = {
             case 'addcurrent': {
                 const name = interaction.options.getString('name');
                 if (!allQueues[userId]?.[name]) {
-                    return interaction.reply({ content: `❌ No saved queue found with name \`${name}\`. Create one first with \`/savedqueue save\`.`, ephemeral: true });
+                    return interaction.reply({ content: `❌ No saved queue found with name \`${name}\`. Create one first with \`/savedqueue save\`.`, flags: MessageFlags.Ephemeral });
                 }
 
                 const queue = interaction.client.queue.get(interaction.guild.id);
                 if (!queue || !queue.songs[0]) {
-                    return interaction.reply({ content: '❌ Nothing is playing right now.', ephemeral: true });
+                    return interaction.reply({ content: '❌ Nothing is playing right now.', flags: MessageFlags.Ephemeral });
                 }
 
                 const track = queue.songs[0];

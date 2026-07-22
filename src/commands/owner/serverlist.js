@@ -8,10 +8,10 @@ module.exports = {
     async execute(interaction) {
         // Owner-only check
         if (interaction.user.id !== process.env.OWNER_ID) {
-            return interaction.reply({ content: '❌ This command is restricted to the bot owner.', ephemeral: true });
+            return interaction.reply({ content: '❌ This command is restricted to the bot owner.', flags: MessageFlags.Ephemeral });
         }
 
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         const guilds = interaction.client.guilds.cache
             .sort((a, b) => b.memberCount - a.memberCount)

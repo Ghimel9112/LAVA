@@ -7,11 +7,11 @@ module.exports = {
     async execute(interaction) {
         const queue = interaction.client.queue.get(interaction.guild.id);
         if (!queue || queue.songs.length < 2) {
-            return interaction.reply({ content: '❌ The queue is already empty.', ephemeral: true });
+            return interaction.reply({ content: '❌ The queue is already empty.', flags: MessageFlags.Ephemeral });
         }
 
         if (!interaction.member.voice.channelId || interaction.member.voice.channelId !== interaction.guild.members.me.voice?.channelId) {
-            return interaction.reply({ content: '❌ You need to be in the same voice channel!', ephemeral: true });
+            return interaction.reply({ content: '❌ You need to be in the same voice channel!', flags: MessageFlags.Ephemeral });
         }
 
         const count = queue.songs.length - 1;

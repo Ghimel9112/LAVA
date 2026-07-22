@@ -12,7 +12,7 @@ module.exports = {
 
         if (specificCmd) {
             const cmd = interaction.client.commands.get(specificCmd.toLowerCase());
-            if (!cmd) return interaction.reply({ content: `❌ Command \`${specificCmd}\` not found.`, ephemeral: true });
+            if (!cmd) return interaction.reply({ content: `❌ Command \`${specificCmd}\` not found.`, flags: MessageFlags.Ephemeral });
 
             const embed = new EmbedBuilder()
                 .setColor('Blurple')
@@ -97,7 +97,7 @@ module.exports = {
 
         collector.on('collect', async (i) => {
             if (i.user.id !== interaction.user.id) {
-                return i.reply({ content: 'Only the command user can navigate.', ephemeral: true });
+                return i.reply({ content: 'Only the command user can navigate.', flags: MessageFlags.Ephemeral });
             }
 
             switch (i.customId) {

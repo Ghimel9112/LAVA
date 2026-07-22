@@ -24,12 +24,12 @@ module.exports = {
         const durationStr = interaction.options.getString('duration');
         const reason = interaction.options.getString('reason') || 'No reason provided';
 
-        if (!target) return interaction.reply({ content: '❌ User not found in this server.', ephemeral: true });
-        if (!target.moderatable) return interaction.reply({ content: '❌ I cannot mute this user. They may have higher permissions.', ephemeral: true });
+        if (!target) return interaction.reply({ content: '❌ User not found in this server.', flags: MessageFlags.Ephemeral });
+        if (!target.moderatable) return interaction.reply({ content: '❌ I cannot mute this user. They may have higher permissions.', flags: MessageFlags.Ephemeral });
 
         const ms = parseDuration(durationStr);
-        if (!ms) return interaction.reply({ content: '❌ Invalid duration. Use formats like `5m`, `1h`, `1d`.', ephemeral: true });
-        if (ms > 28 * 86400000) return interaction.reply({ content: '❌ Maximum timeout duration is 28 days.', ephemeral: true });
+        if (!ms) return interaction.reply({ content: '❌ Invalid duration. Use formats like `5m`, `1h`, `1d`.', flags: MessageFlags.Ephemeral });
+        if (ms > 28 * 86400000) return interaction.reply({ content: '❌ Maximum timeout duration is 28 days.', flags: MessageFlags.Ephemeral });
 
         try {
             await target.timeout(ms, reason);
@@ -46,7 +46,7 @@ module.exports = {
                 .setTimestamp();
             return interaction.reply({ embeds: [embed] });
         } catch (e) {
-            return interaction.reply({ content: `❌ Failed to mute: ${e.message}`, ephemeral: true });
+            return interaction.reply({ content: `❌ Failed to mute: ${e.message}`, flags: MessageFlags.Ephemeral });
         }
     }
 };

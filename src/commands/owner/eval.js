@@ -11,11 +11,11 @@ module.exports = {
     async execute(interaction) {
         // Owner-only check
         if (interaction.user.id !== process.env.OWNER_ID) {
-            return interaction.reply({ content: '❌ This command is restricted to the bot owner.', ephemeral: true });
+            return interaction.reply({ content: '❌ This command is restricted to the bot owner.', flags: MessageFlags.Ephemeral });
         }
 
         const code = interaction.options.getString('code');
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         try {
             const client = interaction.client; // Available in eval scope

@@ -12,7 +12,7 @@ module.exports = {
                 .setRequired(true)),
     async execute(interaction) {
         const { channel } = interaction.member.voice;
-        if (!channel) return interaction.reply({ content: '❌ You need to be in a voice channel!', ephemeral: true });
+        if (!channel) return interaction.reply({ content: '❌ You need to be in a voice channel!', flags: MessageFlags.Ephemeral });
 
         await interaction.deferReply();
 
@@ -61,12 +61,12 @@ module.exports = {
 
         collector.on('collect', async (i) => {
             if (i.user.id !== interaction.user.id) {
-                return i.reply({ content: '❌ Only the command user can select.', ephemeral: true });
+                return i.reply({ content: '❌ Only the command user can select.', flags: MessageFlags.Ephemeral });
             }
 
             const selectedIndex = parseInt(i.values[0]);
             const selectedTrack = tracks[selectedIndex];
-            if (!selectedTrack) return i.reply({ content: '❌ Track not found.', ephemeral: true });
+            if (!selectedTrack) return i.reply({ content: '❌ Track not found.', flags: MessageFlags.Ephemeral });
 
             // Use the play command logic - add to queue or create player
             const playCmd = interaction.client.commands.get('play');

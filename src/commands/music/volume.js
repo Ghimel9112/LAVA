@@ -12,10 +12,10 @@ module.exports = {
                 .setMaxValue(150)),
     async execute(interaction) {
         const queue = interaction.client.queue.get(interaction.guild.id);
-        if (!queue) return interaction.reply({ content: '❌ Nothing is playing right now.', ephemeral: true });
+        if (!queue) return interaction.reply({ content: '❌ Nothing is playing right now.', flags: MessageFlags.Ephemeral });
 
         if (!interaction.member.voice.channelId || interaction.member.voice.channelId !== interaction.guild.members.me.voice?.channelId) {
-            return interaction.reply({ content: '❌ You need to be in the same voice channel!', ephemeral: true });
+            return interaction.reply({ content: '❌ You need to be in the same voice channel!', flags: MessageFlags.Ephemeral });
         }
 
         const amount = interaction.options.getInteger('amount');

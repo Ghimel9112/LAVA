@@ -8,7 +8,7 @@ module.exports = {
     async execute(interaction) {
         const queue = interaction.client.queue.get(interaction.guild.id);
         if (!queue || !queue.songs[0]) {
-            return interaction.reply({ content: '❌ Nothing is playing right now.', ephemeral: true });
+            return interaction.reply({ content: '❌ Nothing is playing right now.', flags: MessageFlags.Ephemeral });
         }
 
         const track = queue.songs[0];

@@ -7,7 +7,7 @@ module.exports = {
     async execute(interaction) {
         // Owner-only check
         if (interaction.user.id !== process.env.OWNER_ID) {
-            return interaction.reply({ content: '❌ This command is restricted to the bot owner.', ephemeral: true });
+            return interaction.reply({ content: '❌ This command is restricted to the bot owner.', flags: MessageFlags.Ephemeral });
         }
 
         // Toggle the global flag
@@ -28,6 +28,6 @@ module.exports = {
             .setFooter({ text: `Toggled by ${interaction.user.tag}` })
             .setTimestamp();
 
-        return interaction.reply({ embeds: [embed], ephemeral: true });
+        return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
     }
 };

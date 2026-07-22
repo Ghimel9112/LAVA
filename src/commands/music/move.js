@@ -17,18 +17,18 @@ module.exports = {
     async execute(interaction) {
         const queue = interaction.client.queue.get(interaction.guild.id);
         if (!queue || queue.songs.length < 2) {
-            return interaction.reply({ content: '❌ The queue has no tracks to move.', ephemeral: true });
+            return interaction.reply({ content: '❌ The queue has no tracks to move.', flags: MessageFlags.Ephemeral });
         }
 
         if (!interaction.member.voice.channelId || interaction.member.voice.channelId !== interaction.guild.members.me.voice?.channelId) {
-            return interaction.reply({ content: '❌ You need to be in the same voice channel!', ephemeral: true });
+            return interaction.reply({ content: '❌ You need to be in the same voice channel!', flags: MessageFlags.Ephemeral });
         }
 
         const from = interaction.options.getInteger('from');
         const to = interaction.options.getInteger('to');
 
         if (from >= queue.songs.length || to >= queue.songs.length) {
-            return interaction.reply({ content: `❌ Invalid position. The queue has **${queue.songs.length - 1}** tracks.`, ephemeral: true });
+            return interaction.reply({ content: `❌ Invalid position. The queue has **${queue.songs.length - 1}** tracks.`, flags: MessageFlags.Ephemeral });
         }
 
         const [movedTrack] = queue.songs.splice(from, 1);

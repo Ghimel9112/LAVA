@@ -15,11 +15,11 @@ module.exports = {
         const member = interaction.guild.members.cache.get(target.id);
 
         if (!member) {
-            return interaction.reply({ content: 'Member not found.', ephemeral: true });
+            return interaction.reply({ content: 'Member not found.', flags: MessageFlags.Ephemeral });
         }
 
         if (!member.kickable) {
-            return interaction.reply({ content: 'I cannot kick this user. They may have higher roles than me.', ephemeral: true });
+            return interaction.reply({ content: 'I cannot kick this user. They may have higher roles than me.', flags: MessageFlags.Ephemeral });
         }
 
         await member.kick();

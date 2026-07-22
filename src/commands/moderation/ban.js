@@ -15,7 +15,7 @@ module.exports = {
         const member = interaction.guild.members.cache.get(target.id);
 
         if (member && !member.bannable) {
-            return interaction.reply({ content: 'I cannot ban this user. They may have higher roles than me.', ephemeral: true });
+            return interaction.reply({ content: 'I cannot ban this user. They may have higher roles than me.', flags: MessageFlags.Ephemeral });
         }
 
         await interaction.guild.members.ban(target);

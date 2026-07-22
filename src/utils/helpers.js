@@ -88,7 +88,7 @@ async function paginatedEmbed(interaction, embeds, timeout = 120000) {
 
     collector.on('collect', async (i) => {
         if (i.user.id !== interaction.user.id) {
-            return i.reply({ content: 'Only the command user can navigate pages.', ephemeral: true });
+            return i.reply({ content: 'Only the command user can navigate pages.', flags: MessageFlags.Ephemeral });
         }
 
         switch (i.customId) {

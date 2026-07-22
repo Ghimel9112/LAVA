@@ -7,11 +7,11 @@ module.exports = {
     async execute(interaction) {
         const queue = interaction.client.queue.get(interaction.guild.id);
         if (!queue || queue.songs.length < 3) {
-            return interaction.reply({ content: '❌ Not enough songs in the queue to shuffle (need at least 2 besides current).', ephemeral: true });
+            return interaction.reply({ content: '❌ Not enough songs in the queue to shuffle (need at least 2 besides current).', flags: MessageFlags.Ephemeral });
         }
 
         if (!interaction.member.voice.channelId || interaction.member.voice.channelId !== interaction.guild.members.me.voice?.channelId) {
-            return interaction.reply({ content: '❌ You need to be in the same voice channel!', ephemeral: true });
+            return interaction.reply({ content: '❌ You need to be in the same voice channel!', flags: MessageFlags.Ephemeral });
         }
 
         // Shuffle everything except the currently playing track (index 0)
