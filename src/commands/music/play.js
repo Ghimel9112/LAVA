@@ -622,7 +622,7 @@ module.exports = {
                         const nextTrack = currentQueue.songs[0];
                         currentQueue.player.playTrack({ encodedTrack: nextTrack.encoded });
                     } else if (currentQueue.autoplay && finishedTrack) {
-                        console.log('[Autoplay] Queue empty. Starting YouTube Mix...');
+                        console.log('[Autoplay] Queue empty. Finding next track (AM -> SC -> YT)...');
                         try {
                             const newTrack = await handleAutoplay(interaction.client, player, finishedTrack, currentQueue);
                             if (newTrack) {
@@ -700,16 +700,12 @@ module.exports = {
 
                     const errMsg = d.exception?.message || '';
                     let userMessage;
+                    let fallbackSucceeded = false;
                     
                     if (errMsg.includes('All clients failed to load the item') || errMsg.includes('Invalid status code') || errMsg.includes('This video requires login')) {
-                        userMessage = '⚠️ Could not play the song from YouTube. Falling back to a similar source (Apple Music/Soundcloud)...';
-                        
                         let fallbackMsg;
                         try {
-                            fallbackMsg = await q.textChannel.send({ embeds: [new EmbedBuilder().setColor('Orange').setDescription(userMessage)] });
-                            setTimeout(() => {
-                                if (fallbackMsg) fallbackMsg.delete().catch(() => {});
-                            }, 5000);
+                            fallbackMsg = await q.textChannel.send({ embeds: [new EmbedBuilder().setColor('Orange').setDescription('⚠️ Track failed to load. Attempting to fall back to alternative sources (Apple Music, SoundCloud, YouTube)...')] });
                         } catch (e) {}
 
                         // Attempt to fallback using the title and artist of the failed track
@@ -719,31 +715,46 @@ module.exports = {
                             
                             let fallbackTrack = null;
 
-                            // 1. Try SoundCloud first
+                            // 1. Try Apple Music first
                             try {
-                                const scRes = await node.rest.resolve(`scsearch:${fallbackQuery}`);
-                                const rawScData = scRes?.data || scRes?.tracks;
-                                if (rawScData) {
-                                    let tracks = Array.isArray(rawScData) ? rawScData : (rawScData.tracks || []);
+                                const amRes = await node.rest.resolve(`amsearch:${fallbackQuery}`);
+                                const rawAmData = amRes?.data || amRes?.tracks;
+                                if (rawAmData) {
+                                    let tracks = Array.isArray(rawAmData) ? rawAmData : (rawAmData.tracks || []);
                                     tracks = tracks.filter(t => t && t.info && t.info.title);
                                     if (tracks.length > 0) fallbackTrack = tracks[0];
                                 }
-                            } catch (scErr) {
-                                console.error('[Fallback] SoundCloud failed:', scErr);
+                            } catch (amErr) {
+                                console.error('[Fallback] Apple Music failed:', amErr);
                             }
 
-                            // 2. Try Apple Music if SoundCloud fails
+                            // 2. Try SoundCloud if Apple Music fails
                             if (!fallbackTrack) {
                                 try {
-                                    const amRes = await node.rest.resolve(`amsearch:${fallbackQuery}`);
-                                    const rawAmData = amRes?.data || amRes?.tracks;
-                                    if (rawAmData) {
-                                        let tracks = Array.isArray(rawAmData) ? rawAmData : (rawAmData.tracks || []);
+                                    const scRes = await node.rest.resolve(`scsearch:${fallbackQuery}`);
+                                    const rawScData = scRes?.data || scRes?.tracks;
+                                    if (rawScData) {
+                                        let tracks = Array.isArray(rawScData) ? rawScData : (rawScData.tracks || []);
                                         tracks = tracks.filter(t => t && t.info && t.info.title);
                                         if (tracks.length > 0) fallbackTrack = tracks[0];
                                     }
-                                } catch (amErr) {
-                                    console.error('[Fallback] Apple Music failed:', amErr);
+                                } catch (scErr) {
+                                    console.error('[Fallback] SoundCloud failed:', scErr);
+                                }
+                            }
+
+                            // 3. Try YouTube as absolute last resort (premium only)
+                            if (!fallbackTrack && isPremium && !interaction.client.youtubeDisabled) {
+                                try {
+                                    const ytRes = await node.rest.resolve(`ytsearch:${fallbackQuery}`);
+                                    const rawYtData = ytRes?.data || ytRes?.tracks;
+                                    if (rawYtData) {
+                                        let tracks = Array.isArray(rawYtData) ? rawYtData : (rawYtData.tracks || []);
+                                        tracks = tracks.filter(t => t && t.info && t.info.title);
+                                        if (tracks.length > 0) fallbackTrack = tracks[0];
+                                    }
+                                } catch (ytErr) {
+                                    console.error('[Fallback] YouTube failed:', ytErr);
                                 }
                             }
 
@@ -751,17 +762,20 @@ module.exports = {
                                 fallbackTrack.isFallback = true;
                                 q.songs[0] = fallbackTrack;
                                 q.player.playTrack({ encodedTrack: fallbackTrack.encoded });
-                                return; // Do not trigger skip
+                                if (fallbackMsg) {
+                                    fallbackMsg.edit({ embeds: [new EmbedBuilder().setColor('Green').setDescription(`✅ Successfully found a fallback track on **${fallbackTrack.info.sourceName}**!`)] }).then(m => setTimeout(()=>m.delete().catch(()=>{}), 5000)).catch(()=>{});
+                                }
+                                fallbackSucceeded = true; // Prevent the skip emit below
                             }
                         }
-                        
-                        userMessage = '⚠️ The fallback source also failed to find the track. Skipping to the next song.';
-                        try {
-                            const failMsg = await q.textChannel.send({ embeds: [new EmbedBuilder().setColor('Red').setDescription(userMessage)] });
-                            setTimeout(() => {
-                                if (failMsg) failMsg.delete().catch(() => {});
-                            }, 5000);
-                        } catch (e) {}
+
+                        if (!fallbackSucceeded) {
+                            if (fallbackMsg) {
+                                fallbackMsg.edit({ embeds: [new EmbedBuilder().setColor('Red').setDescription('❌ All fallback sources (Apple Music, SoundCloud, YouTube) failed to load the track. Skipping to the next song.')] }).then(m => setTimeout(()=>m.delete().catch(()=>{}), 7000)).catch(()=>{});
+                            }
+                            // Skip to the next track since all fallbacks failed
+                            q.player.emit('end', { reason: 'stopped' });
+                        }
                     } else {
                         userMessage = `⚠️ Error: ${errMsg}`;
                         try {
@@ -770,12 +784,10 @@ module.exports = {
                                 if (errMsgObj) errMsgObj.delete().catch(() => {});
                             }, 5000);
                         } catch (e) {}
+                        // Skip to the next track
+                        q.player.emit('end', { reason: 'stopped' });
                     }
                 }
-
-                // Skip to the next track by artificially emitting an end event, 
-                // since Lavalink won't emit 'stopped' if it's already stopped by an exception.
-                q.player.emit('end', { reason: 'stopped' });
             });
 
             const newQueue = {

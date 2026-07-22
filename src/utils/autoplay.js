@@ -91,25 +91,20 @@ async function handleAutoplay(client, player, track, queue) {
         };
 
         // -----------------------------------------------------------------
-        // DEFINE STRATEGIES
+        // DEFINE STRATEGIES (Order: Apple Music -> SoundCloud -> YouTube)
         // -----------------------------------------------------------------
         const strategies = [];
         const isYouTube = track.info.sourceName === 'youtube' || track.info.sourceName === 'youtube-music';
+        
+        strategies.push({ name: 'Apple Music', prefix: 'amsearch:' });
+        strategies.push({ name: 'SoundCloud', prefix: 'scsearch:' });
 
         if (premium && !ytDisabled) {
+            // YouTube is the absolute last resort for Autoplay since it frequently gets blocked
             if (isYouTube) {
                 strategies.push({ name: 'YouTube Mix (Same Genre)', type: 'mix' });
             }
-            strategies.push(
-                { name: 'YouTube Music', prefix: 'ytmsearch:' },
-                { name: 'Apple Music', prefix: 'amsearch:' },
-                { name: 'SoundCloud', prefix: 'scsearch:' }
-            );
-        } else {
-            strategies.push(
-                { name: 'Apple Music', prefix: 'amsearch:' },
-                { name: 'SoundCloud', prefix: 'scsearch:' }
-            );
+            strategies.push({ name: 'YouTube Music', prefix: 'ytmsearch:' });
         }
 
         // -----------------------------------------------------------------
@@ -147,24 +142,26 @@ async function handleAutoplay(client, player, track, queue) {
         // STRATEGY: Artist Search (Last Resort)
         // -----------------------------------------------------------------
         if (candidates.length === 0) {
-            try {
-                // Non-premium: only Apple Music. Premium: YouTube Music preferred.
-                const prefix = (premium && !ytDisabled) ? 'ytmsearch:' : 'amsearch:';
-                const query = `${prefix}${author}`;
-                const res = await node.rest.resolve(query);
+            // Try artist name on Apple Music first, then SoundCloud, then YouTube Music (premium only)
+            const artistPrefixes = ['amsearch:', 'scsearch:'];
+            if (premium && !ytDisabled) artistPrefixes.push('ytmsearch:');
 
-                const loadType = res?.loadType ? res.loadType.toLowerCase() : '';
-                if (loadType !== 'empty' && loadType !== 'error' && res && res.data) {
-                    let tracks = Array.isArray(res.data) ? res.data : (res.data.tracks || []);
-                    let newTracks = getNewTracks(tracks);
-
-                    if (newTracks.length > 0) {
-                        candidates = newTracks;
-                        console.log(`[Autoplay] Strategy (Artist - ${prefix}) found ${candidates.length} new candidates.`);
+            for (const prefix of artistPrefixes) {
+                if (candidates.length > 0) break;
+                try {
+                    const res = await node.rest.resolve(`${prefix}${author}`);
+                    const loadType = res?.loadType ? res.loadType.toLowerCase() : '';
+                    if (loadType !== 'empty' && loadType !== 'error' && res && res.data) {
+                        let tracks = Array.isArray(res.data) ? res.data : (res.data.tracks || []);
+                        let newTracks = getNewTracks(tracks);
+                        if (newTracks.length > 0) {
+                            candidates = newTracks;
+                            console.log(`[Autoplay] Strategy (Artist - ${prefix}) found ${candidates.length} new candidates.`);
+                        }
                     }
+                } catch (e) {
+                    console.warn(`[Autoplay] Strategy (Artist - ${prefix}) failed: ${e.message}`);
                 }
-            } catch (e) {
-                console.warn(`[Autoplay] Strategy (Artist) failed: ${e.message}`);
             }
         }
 
