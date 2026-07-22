@@ -717,27 +717,41 @@ module.exports = {
                         if (failedTrack && failedTrack.info && !failedTrack.isFallback) {
                             const fallbackQuery = `${failedTrack.info.title} ${failedTrack.info.author || ''}`.trim();
                             
+                            let fallbackTrack = null;
+
+                            // 1. Try SoundCloud first
                             try {
-                                const fallbackRes = await node.rest.resolve(`scsearch:${fallbackQuery}`);
-                                const rawData = fallbackRes?.data || fallbackRes?.tracks;
-                                
-                                if (rawData) {
-                                    let tracks = Array.isArray(rawData) ? rawData : (rawData.tracks || []);
+                                const scRes = await node.rest.resolve(`scsearch:${fallbackQuery}`);
+                                const rawScData = scRes?.data || scRes?.tracks;
+                                if (rawScData) {
+                                    let tracks = Array.isArray(rawScData) ? rawScData : (rawScData.tracks || []);
                                     tracks = tracks.filter(t => t && t.info && t.info.title);
-                                    
-                                    if (tracks.length > 0) {
-                                        // Tag the track so we don't infinitely fallback if this one also fails
-                                        tracks[0].isFallback = true;
-                                        // Replace the failed track with the new fallback track
-                                        q.songs[0] = tracks[0];
-                                        
-                                        // Play the fallback track
-                                        q.player.playTrack({ encodedTrack: tracks[0].encoded });
-                                        return; // Do not trigger skip
-                                    }
+                                    if (tracks.length > 0) fallbackTrack = tracks[0];
                                 }
-                            } catch (fallbackErr) {
-                                console.error('[Fallback] Failed to resolve fallback track:', fallbackErr);
+                            } catch (scErr) {
+                                console.error('[Fallback] SoundCloud failed:', scErr);
+                            }
+
+                            // 2. Try Apple Music if SoundCloud fails
+                            if (!fallbackTrack) {
+                                try {
+                                    const amRes = await node.rest.resolve(`amsearch:${fallbackQuery}`);
+                                    const rawAmData = amRes?.data || amRes?.tracks;
+                                    if (rawAmData) {
+                                        let tracks = Array.isArray(rawAmData) ? rawAmData : (rawAmData.tracks || []);
+                                        tracks = tracks.filter(t => t && t.info && t.info.title);
+                                        if (tracks.length > 0) fallbackTrack = tracks[0];
+                                    }
+                                } catch (amErr) {
+                                    console.error('[Fallback] Apple Music failed:', amErr);
+                                }
+                            }
+
+                            if (fallbackTrack) {
+                                fallbackTrack.isFallback = true;
+                                q.songs[0] = fallbackTrack;
+                                q.player.playTrack({ encodedTrack: fallbackTrack.encoded });
+                                return; // Do not trigger skip
                             }
                         }
                         
