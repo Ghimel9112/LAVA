@@ -727,11 +727,20 @@ module.exports = {
                     exceptionState.set(guildId, state);
                 }
 
-                const errMsg = d.exception?.message || '';
+                // Bulletproof error extraction
+                let errMsg = '';
+                if (d.exception && d.exception.message) errMsg = d.exception.message;
+                else if (d.message) errMsg = d.message;
+                else if (d.error) errMsg = d.error;
+                else if (typeof d === 'string') errMsg = d;
+                else errMsg = JSON.stringify(d);
+                
+                console.log(`[Exception Handler] Triggered! Extracted errMsg: "${errMsg}"`);
+
                 let userMessage;
                 let fallbackSucceeded = false;
                 
-                if (errMsg.includes('All clients failed to load the item') || errMsg.includes('Invalid status code') || errMsg.includes('This video requires login')) {
+                if (errMsg.includes('All clients failed to load the item') || errMsg.includes('Invalid status code') || errMsg.includes('This video requires login') || errMsg.includes('Something went wrong') || errMsg.includes('Sign in to confirm')) {
                     let fallbackMsg;
                     if (shouldSendMessage) {
                         try {
