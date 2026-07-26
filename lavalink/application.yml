@@ -88,11 +88,11 @@ plugins:
     allowDirectVideoIds: true
     allowDirectPlaylistIds: true
     clients:
-      - TVHTML5_SIMPLY
       - MUSIC
       - WEB
       - WEBEMBEDDED
       - ANDROID_VR
+      - TVHTML5
     oauth:
       enabled: true
       refreshToken: "1//044BVB2YHSQIWCgYIARAAGAQSNwF-L9IrUyFRtw8ysp9SB5iapEsIEXNyxhd8-WmVCcVBDYmTXqWWeGVIiFWBOjIIodLHYvY2fCU"
