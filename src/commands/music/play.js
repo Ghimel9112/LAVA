@@ -405,9 +405,15 @@ module.exports = {
                     const idMatch = query.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|shorts\/|watch\?v=|watch\?.+&v=)|music\.youtube\.com\/watch\?v=)([^"&?\/\s]{11})/);
                     const videoId = idMatch ? idMatch[1] : query;
                     const info = await YouTube.getVideo(idMatch ? `https://www.youtube.com/watch?v=${videoId}` : query);
-                    songTitle = cleanTitle(info.title);
-                    songAuthor = (info.channel?.name || '').replace(/\s*-\s*Topic$/gi, '').replace(/VEVO$/gi, '').trim();
-                } catch (error) { console.error('YouTube metadata error:', error); }
+                    if (info && info.title) {
+                        songTitle = cleanTitle(info.title);
+                        songAuthor = (info.channel?.name || '').replace(/\s*-\s*Topic$/gi, '').replace(/VEVO$/gi, '').trim();
+                    } else {
+                        throw new Error('No metadata returned');
+                    }
+                } catch (error) { 
+                    console.error('YouTube metadata error:', error.message || error); 
+                }
             } else {
                 // Try to split "artist - title" format from user input
                 const dashSplit = query.match(/^(.+?)\s*[-–—]\s*(.+)$/);
@@ -420,7 +426,12 @@ module.exports = {
                 }
             }
 
-            const audioQuery = (songTitle && songAuthor) ? `${songTitle} ${songAuthor}` : query;
+            // If the query is a URL and we failed to extract a title, abort instead of searching SC/AM for a URL string
+            if (!songTitle && /^https?:\/\//.test(query)) {
+                return interaction.editReply('⚠️ Could not extract song information from the provided link to find a fallback.');
+            }
+
+            const audioQuery = (songTitle && songAuthor) ? `${songTitle} ${songAuthor}` : (songTitle || query);
             let candidates = [];
 
             // Strategy 1: Apple Music search with full query (primary source - works everywhere)
