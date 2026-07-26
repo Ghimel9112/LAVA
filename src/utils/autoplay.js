@@ -95,13 +95,20 @@ async function handleAutoplay(client, player, track, queue) {
         // -----------------------------------------------------------------
         const strategies = [];
         const isYouTube = track.info.sourceName === 'youtube' || track.info.sourceName === 'youtube-music';
-        
+
+        // Clean author: strip YouTube topic channel suffixes before using in search queries
+        const cleanAuthor = author
+            .replace(/\s*-\s*Topic$/gi, '')
+            .replace(/VEVO$/gi, '')
+            .trim();
+
         strategies.push({ name: 'Apple Music', prefix: 'amsearch:' });
         strategies.push({ name: 'SoundCloud', prefix: 'scsearch:' });
 
         if (premium && !ytDisabled) {
-            // YouTube is the absolute last resort for Autoplay since it frequently gets blocked
-            if (isYouTube) {
+            // Only use YouTube Mix if the seed is YouTube AND YouTube is actually working
+            // If the seed failed due to YouTube block, Mix will return 24 more unplayable tracks
+            if (isYouTube && !ytDisabled) {
                 strategies.push({ name: 'YouTube Mix (Same Genre)', type: 'mix' });
             }
             strategies.push({ name: 'YouTube Music', prefix: 'ytmsearch:' });
@@ -118,7 +125,7 @@ async function handleAutoplay(client, player, track, queue) {
                 if (strategy.type === 'mix') {
                     query = `https://www.youtube.com/watch?v=${identifier}&list=RD${identifier}`;
                 } else {
-                    query = `${strategy.prefix}${author} - ${title}`;
+                    query = `${strategy.prefix}${cleanAuthor} - ${title}`;
                 }
                 
                 const res = await node.rest.resolve(query);
@@ -149,7 +156,7 @@ async function handleAutoplay(client, player, track, queue) {
             for (const prefix of artistPrefixes) {
                 if (candidates.length > 0) break;
                 try {
-                    const res = await node.rest.resolve(`${prefix}${author}`);
+                    const res = await node.rest.resolve(`${prefix}${cleanAuthor}`);
                     const loadType = res?.loadType ? res.loadType.toLowerCase() : '';
                     if (loadType !== 'empty' && loadType !== 'error' && res && res.data) {
                         let tracks = Array.isArray(res.data) ? res.data : (res.data.tracks || []);

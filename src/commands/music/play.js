@@ -671,7 +671,7 @@ module.exports = {
                 const guildId = interaction.guild.id;
                 const now = Date.now();
                 const COOLDOWN_MS = 5000; // Min 5s between exception messages per guild
-                const MAX_CONSECUTIVE_FAILS = 3;
+                const MAX_CONSECUTIVE_FAILS = 6; // Raised to allow AM/SC fallbacks to cycle during YouTube outages
 
                 // Retrieve or initialize exception state for this guild
                 let state = exceptionState.get(guildId) || { lastSentAt: 0, consecutiveFails: 0 };
@@ -710,8 +710,16 @@ module.exports = {
 
                         // Attempt to fallback using the title and artist of the failed track
                         const failedTrack = q.songs[0];
+                        const isYouTubeTrack = failedTrack?.info?.sourceName === 'youtube' || failedTrack?.info?.sourceName === 'youtube-music';
+
                         if (failedTrack && failedTrack.info && !failedTrack.isFallback) {
-                            const fallbackQuery = `${failedTrack.info.title} ${failedTrack.info.author || ''}`.trim();
+                            // Clean author name: strip YouTube topic channel suffixes like " - Topic", "VEVO"
+                            const cleanAuthor = (failedTrack.info.author || '')
+                                .replace(/\s*-\s*Topic$/gi, '')
+                                .replace(/VEVO$/gi, '')
+                                .trim();
+                            const fallbackQuery = `${failedTrack.info.title} ${cleanAuthor}`.trim();
+                            console.log(`[Fallback] Searching for: "${fallbackQuery}" (original source: ${failedTrack.info.sourceName})`);
                             
                             let fallbackTrack = null;
 
@@ -743,8 +751,9 @@ module.exports = {
                                 }
                             }
 
-                            // 3. Try YouTube as absolute last resort (premium only)
-                            if (!fallbackTrack && isPremium && !interaction.client.youtubeDisabled) {
+                            // 3. Try YouTube as absolute last resort (premium only, and ONLY if original track was NOT YouTube)
+                            // No point searching YouTube if the failure was caused by a YouTube block
+                            if (!fallbackTrack && isPremium && !interaction.client.youtubeDisabled && !isYouTubeTrack) {
                                 try {
                                     const ytRes = await node.rest.resolve(`ytsearch:${fallbackQuery}`);
                                     const rawYtData = ytRes?.data || ytRes?.tracks;
@@ -765,6 +774,9 @@ module.exports = {
                                 if (fallbackMsg) {
                                     fallbackMsg.edit({ embeds: [new EmbedBuilder().setColor('Green').setDescription(`✅ Successfully found a fallback track on **${fallbackTrack.info.sourceName}**!`)] }).then(m => setTimeout(()=>m.delete().catch(()=>{}), 5000)).catch(()=>{});
                                 }
+                                // Reset consecutive fail counter since we recovered successfully
+                                state.consecutiveFails = 0;
+                                exceptionState.set(guildId, state);
                                 fallbackSucceeded = true; // Prevent the skip emit below
                             }
                         }
