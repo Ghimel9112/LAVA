@@ -740,12 +740,14 @@ module.exports = {
                         const isYouTubeTrack = failedTrack?.info?.sourceName === 'youtube' || failedTrack?.info?.sourceName === 'youtube-music';
 
                         if (failedTrack && failedTrack.info && !failedTrack.isFallback) {
+                            // Clean title to strip " | Official Video" and bracketed text
+                            const cleanedTitle = cleanTitle(failedTrack.info.title || '');
                             // Clean author name: strip YouTube topic channel suffixes like " - Topic", "VEVO"
                             const cleanAuthor = (failedTrack.info.author || '')
                                 .replace(/\s*-\s*Topic$/gi, '')
                                 .replace(/VEVO$/gi, '')
                                 .trim();
-                            const fallbackQuery = `${failedTrack.info.title} ${cleanAuthor}`.trim();
+                            const fallbackQuery = `${cleanedTitle} ${cleanAuthor}`.trim();
                             console.log(`[Fallback] Searching for: "${fallbackQuery}" (original source: ${failedTrack.info.sourceName})`);
                             
                             let fallbackTrack = null;
