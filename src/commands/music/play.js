@@ -720,20 +720,24 @@ module.exports = {
                     return;
                 }
 
-                // Only send a message if the cooldown has passed
-                if (now - state.lastSentAt >= COOLDOWN_MS) {
+                // Determine if we should send Discord messages (cooldown logic)
+                const shouldSendMessage = (now - state.lastSentAt >= COOLDOWN_MS);
+                if (shouldSendMessage) {
                     state.lastSentAt = now;
                     exceptionState.set(guildId, state);
+                }
 
-                    const errMsg = d.exception?.message || '';
-                    let userMessage;
-                    let fallbackSucceeded = false;
-                    
-                    if (errMsg.includes('All clients failed to load the item') || errMsg.includes('Invalid status code') || errMsg.includes('This video requires login')) {
-                        let fallbackMsg;
+                const errMsg = d.exception?.message || '';
+                let userMessage;
+                let fallbackSucceeded = false;
+                
+                if (errMsg.includes('All clients failed to load the item') || errMsg.includes('Invalid status code') || errMsg.includes('This video requires login')) {
+                    let fallbackMsg;
+                    if (shouldSendMessage) {
                         try {
                             fallbackMsg = await q.textChannel.send({ embeds: [new EmbedBuilder().setColor('Orange').setDescription('⚠️ Track failed to load. Attempting to fall back to alternative sources (Apple Music, SoundCloud, YouTube)...')] });
                         } catch (e) {}
+                    }
 
                         // Attempt to fallback using the title and artist of the failed track
                         const failedTrack = q.songs[0];
@@ -802,6 +806,8 @@ module.exports = {
                                 q.player.playTrack({ encodedTrack: fallbackTrack.encoded });
                                 if (fallbackMsg) {
                                     fallbackMsg.edit({ embeds: [new EmbedBuilder().setColor('Green').setDescription(`✅ Successfully found a fallback track on **${fallbackTrack.info.sourceName}**!`)] }).then(m => setTimeout(()=>m.delete().catch(()=>{}), 5000)).catch(()=>{});
+                                } else if (shouldSendMessage) {
+                                    q.textChannel.send({ embeds: [new EmbedBuilder().setColor('Green').setDescription(`✅ Successfully found a fallback track on **${fallbackTrack.info.sourceName}**!`)] }).then(m => setTimeout(()=>m.delete().catch(()=>{}), 5000)).catch(()=>{});
                                 }
                                 // Reset consecutive fail counter since we recovered successfully
                                 state.consecutiveFails = 0;
@@ -813,22 +819,26 @@ module.exports = {
                         if (!fallbackSucceeded) {
                             if (fallbackMsg) {
                                 fallbackMsg.edit({ embeds: [new EmbedBuilder().setColor('Red').setDescription('❌ All fallback sources (Apple Music, SoundCloud, YouTube) failed to load the track. Skipping to the next song.')] }).then(m => setTimeout(()=>m.delete().catch(()=>{}), 7000)).catch(()=>{});
+                            } else if (shouldSendMessage) {
+                                q.textChannel.send({ embeds: [new EmbedBuilder().setColor('Red').setDescription('❌ All fallback sources (Apple Music, SoundCloud, YouTube) failed to load the track. Skipping to the next song.')] }).then(m => setTimeout(()=>m.delete().catch(()=>{}), 7000)).catch(()=>{});
                             }
                             // Skip to the next track since all fallbacks failed
                             q.player.emit('end', { reason: 'stopped' });
                         }
                     } else {
                         userMessage = `⚠️ Error: ${errMsg}`;
-                        try {
-                            const errMsgObj = await q.textChannel.send({ embeds: [new EmbedBuilder().setColor('Red').setDescription(userMessage)] });
-                            setTimeout(() => {
-                                if (errMsgObj) errMsgObj.delete().catch(() => {});
-                            }, 5000);
-                        } catch (e) {}
+                        if (shouldSendMessage) {
+                            try {
+                                const errMsgObj = await q.textChannel.send({ embeds: [new EmbedBuilder().setColor('Red').setDescription(userMessage)] });
+                                setTimeout(() => {
+                                    if (errMsgObj) errMsgObj.delete().catch(() => {});
+                                }, 5000);
+                            } catch (e) {}
+                        }
                         // Skip to the next track
                         q.player.emit('end', { reason: 'stopped' });
                     }
-                }
+                // (End of exception handler block)
             });
 
             const newQueue = {
