@@ -752,6 +752,12 @@ module.exports = {
                         const failedTrack = q.songs[0];
                         const isYouTubeTrack = failedTrack?.info?.sourceName === 'youtube' || failedTrack?.info?.sourceName === 'youtube-music';
 
+                        console.log(`[Exception Debug] failedTrack exists: ${!!failedTrack}`);
+                        if (failedTrack) {
+                            console.log(`[Exception Debug] failedTrack.info exists: ${!!failedTrack.info}`);
+                            console.log(`[Exception Debug] failedTrack.isFallback: ${failedTrack.isFallback}`);
+                        }
+
                         if (failedTrack && failedTrack.info && !failedTrack.isFallback) {
                             // Clean title to strip " | Official Video" and bracketed text
                             const cleanedTitle = cleanTitle(failedTrack.info.title || '');
