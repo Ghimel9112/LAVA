@@ -654,6 +654,7 @@ module.exports = {
                             const newTrack = await handleAutoplay(interaction.client, player, finishedTrack, currentQueue);
                             if (newTrack) {
                                 console.log(`[Autoplay] Queued track: ${newTrack.info.title}`);
+                                currentQueue.songs.push(newTrack);
                                 currentQueue.player.playTrack({ encodedTrack: newTrack.encoded });
                                 return;
                             }
@@ -777,7 +778,7 @@ module.exports = {
                                 const rawAmData = amRes?.data || amRes?.tracks;
                                 if (rawAmData) {
                                     let tracks = Array.isArray(rawAmData) ? rawAmData : (rawAmData.tracks || []);
-                                    tracks = tracks.filter(t => t && t.info && t.info.title);
+                                    tracks = tracks.filter(t => t && t.info && t.info.title && !isRemixOrLive(t.info.title, fallbackQuery));
                                     if (tracks.length > 0) fallbackTrack = tracks[0];
                                 }
                             } catch (amErr) {
@@ -791,7 +792,7 @@ module.exports = {
                                     const rawScData = scRes?.data || scRes?.tracks;
                                     if (rawScData) {
                                         let tracks = Array.isArray(rawScData) ? rawScData : (rawScData.tracks || []);
-                                        tracks = tracks.filter(t => t && t.info && t.info.title);
+                                        tracks = tracks.filter(t => t && t.info && t.info.title && !isRemixOrLive(t.info.title, fallbackQuery));
                                         if (tracks.length > 0) fallbackTrack = tracks[0];
                                     }
                                 } catch (scErr) {
@@ -807,7 +808,7 @@ module.exports = {
                                     const rawYtData = ytRes?.data || ytRes?.tracks;
                                     if (rawYtData) {
                                         let tracks = Array.isArray(rawYtData) ? rawYtData : (rawYtData.tracks || []);
-                                        tracks = tracks.filter(t => t && t.info && t.info.title);
+                                        tracks = tracks.filter(t => t && t.info && t.info.title && !isRemixOrLive(t.info.title, fallbackQuery));
                                         if (tracks.length > 0) fallbackTrack = tracks[0];
                                     }
                                 } catch (ytErr) {
