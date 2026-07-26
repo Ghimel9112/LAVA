@@ -404,12 +404,28 @@ module.exports = {
                 try {
                     const idMatch = query.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|shorts\/|watch\?v=|watch\?.+&v=)|music\.youtube\.com\/watch\?v=)([^"&?\/\s]{11})/);
                     const videoId = idMatch ? idMatch[1] : query;
-                    const info = await YouTube.getVideo(idMatch ? `https://www.youtube.com/watch?v=${videoId}` : query);
+                    let info = null;
+                    
+                    try {
+                        info = await YouTube.getVideo(idMatch ? `https://www.youtube.com/watch?v=${videoId}` : query);
+                    } catch (e) {
+                        // youtube-sr is blocked, fallback to official YouTube oEmbed API for metadata
+                        try {
+                            const oEmbedRes = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
+                            if (oEmbedRes.ok) {
+                                const oEmbedData = await oEmbedRes.json();
+                                info = { title: oEmbedData.title, channel: { name: oEmbedData.author_name } };
+                            }
+                        } catch (oEmbedErr) {
+                            console.error('oEmbed fallback failed:', oEmbedErr.message);
+                        }
+                    }
+
                     if (info && info.title) {
                         songTitle = cleanTitle(info.title);
                         songAuthor = (info.channel?.name || '').replace(/\s*-\s*Topic$/gi, '').replace(/VEVO$/gi, '').trim();
                     } else {
-                        throw new Error('No metadata returned');
+                        throw new Error('No metadata returned from any source');
                     }
                 } catch (error) { 
                     console.error('YouTube metadata error:', error.message || error); 
