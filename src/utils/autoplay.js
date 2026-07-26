@@ -91,7 +91,10 @@ async function handleAutoplay(client, player, track, queue) {
         };
 
         // -----------------------------------------------------------------
-        // DEFINE STRATEGIES (Order: Apple Music -> SoundCloud -> YouTube)
+        // DEFINE STRATEGIES (Order: SoundCloud -> Apple Music -> YouTube)
+        // SoundCloud streams directly without YouTube mirroring.
+        // Apple Music tracks get mirrored through YouTube via LavaSrc,
+        // so if YouTube is down, ALL Apple Music playback fails too.
         // -----------------------------------------------------------------
         const strategies = [];
         const isYouTube = track.info.sourceName === 'youtube' || track.info.sourceName === 'youtube-music';
@@ -102,8 +105,8 @@ async function handleAutoplay(client, player, track, queue) {
             .replace(/VEVO$/gi, '')
             .trim();
 
-        strategies.push({ name: 'Apple Music', prefix: 'amsearch:' });
         strategies.push({ name: 'SoundCloud', prefix: 'scsearch:' });
+        strategies.push({ name: 'Apple Music', prefix: 'amsearch:' });
 
         if (premium && !ytDisabled) {
             // Only use YouTube Mix if the seed is YouTube AND YouTube is actually working
@@ -150,7 +153,7 @@ async function handleAutoplay(client, player, track, queue) {
         // -----------------------------------------------------------------
         if (candidates.length === 0) {
             // Try artist name on Apple Music first, then SoundCloud, then YouTube Music (premium only)
-            const artistPrefixes = ['amsearch:', 'scsearch:'];
+            const artistPrefixes = ['scsearch:', 'amsearch:'];
             if (premium && !ytDisabled) artistPrefixes.push('ytmsearch:');
 
             for (const prefix of artistPrefixes) {

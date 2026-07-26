@@ -768,31 +768,39 @@ module.exports = {
                                 .replace(/VEVO$/gi, '')
                                 .trim();
                             const fallbackQuery = `${cleanedTitle} ${cleanAuthor}`.trim();
-                            console.log(`[Fallback] Searching for: "${fallbackQuery}" (original source: ${failedTrack.info.sourceName})`);
+                            const failedSource = failedTrack.info.sourceName || '';
+                            const failedId = failedTrack.info.identifier || '';
+                            console.log(`[Fallback] Searching for: "${fallbackQuery}" (original source: ${failedSource})`);
                             
                             let fallbackTrack = null;
 
-                            // 1. Try Apple Music first
-                            try {
-                                const amRes = await node.rest.resolve(`amsearch:${fallbackQuery}`);
-                                const rawAmData = amRes?.data || amRes?.tracks;
-                                if (rawAmData) {
-                                    let tracks = Array.isArray(rawAmData) ? rawAmData : (rawAmData.tracks || []);
-                                    tracks = tracks.filter(t => t && t.info && t.info.title && !isRemixOrLive(t.info.title, fallbackQuery));
-                                    if (tracks.length > 0) fallbackTrack = tracks[0];
+                            // Helper: filter out the exact same track (same identifier) to avoid infinite loops
+                            const isNotSameTrack = (t) => t.info.identifier !== failedId;
+
+                            // 1. Try Apple Music first — but SKIP if the failed track was already from Apple Music
+                            // (LavaSrc mirrors AM tracks through YouTube, so re-finding the same AM track = same failure)
+                            if (failedSource !== 'applemusic') {
+                                try {
+                                    const amRes = await node.rest.resolve(`amsearch:${fallbackQuery}`);
+                                    const rawAmData = amRes?.data || amRes?.tracks;
+                                    if (rawAmData) {
+                                        let tracks = Array.isArray(rawAmData) ? rawAmData : (rawAmData.tracks || []);
+                                        tracks = tracks.filter(t => t && t.info && t.info.title && !isRemixOrLive(t.info.title, fallbackQuery) && isNotSameTrack(t));
+                                        if (tracks.length > 0) fallbackTrack = tracks[0];
+                                    }
+                                } catch (amErr) {
+                                    console.error('[Fallback] Apple Music failed:', amErr);
                                 }
-                            } catch (amErr) {
-                                console.error('[Fallback] Apple Music failed:', amErr);
                             }
 
-                            // 2. Try SoundCloud if Apple Music fails
+                            // 2. Try SoundCloud (streams directly, doesn't mirror through YouTube)
                             if (!fallbackTrack) {
                                 try {
                                     const scRes = await node.rest.resolve(`scsearch:${fallbackQuery}`);
                                     const rawScData = scRes?.data || scRes?.tracks;
                                     if (rawScData) {
                                         let tracks = Array.isArray(rawScData) ? rawScData : (rawScData.tracks || []);
-                                        tracks = tracks.filter(t => t && t.info && t.info.title && !isRemixOrLive(t.info.title, fallbackQuery));
+                                        tracks = tracks.filter(t => t && t.info && t.info.title && !isRemixOrLive(t.info.title, fallbackQuery) && isNotSameTrack(t));
                                         if (tracks.length > 0) fallbackTrack = tracks[0];
                                     }
                                 } catch (scErr) {
@@ -808,7 +816,7 @@ module.exports = {
                                     const rawYtData = ytRes?.data || ytRes?.tracks;
                                     if (rawYtData) {
                                         let tracks = Array.isArray(rawYtData) ? rawYtData : (rawYtData.tracks || []);
-                                        tracks = tracks.filter(t => t && t.info && t.info.title && !isRemixOrLive(t.info.title, fallbackQuery));
+                                        tracks = tracks.filter(t => t && t.info && t.info.title && !isRemixOrLive(t.info.title, fallbackQuery) && isNotSameTrack(t));
                                         if (tracks.length > 0) fallbackTrack = tracks[0];
                                     }
                                 } catch (ytErr) {
