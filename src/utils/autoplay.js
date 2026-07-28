@@ -91,10 +91,11 @@ async function handleAutoplay(client, player, track, queue) {
         };
 
         // -----------------------------------------------------------------
-        // DEFINE STRATEGIES (Order: SoundCloud -> Apple Music -> YouTube)
-        // SoundCloud streams directly without YouTube mirroring.
-        // Apple Music tracks get mirrored through YouTube via LavaSrc,
-        // so if YouTube is down, ALL Apple Music playback fails too.
+        // DEFINE STRATEGIES (Order: Apple Music -> Deezer -> SoundCloud -> Tidal/YT [premium])
+        // Apple Music is tried first for best quality.
+        // Deezer streams directly (no YouTube dependency) — great reliability.
+        // SoundCloud is the next direct-stream fallback.
+        // Tidal and YouTube are last resort — both mirror via YouTube, premium only.
         // -----------------------------------------------------------------
         const strategies = [];
         const isYouTube = track.info.sourceName === 'youtube' || track.info.sourceName === 'youtube-music';
@@ -105,12 +106,14 @@ async function handleAutoplay(client, player, track, queue) {
             .replace(/VEVO$/gi, '')
             .trim();
 
-        strategies.push({ name: 'SoundCloud', prefix: 'scsearch:' });
         strategies.push({ name: 'Apple Music', prefix: 'amsearch:' });
+        strategies.push({ name: 'Deezer', prefix: 'dzsearch:' });       // Direct stream, no YouTube dependency
+        strategies.push({ name: 'SoundCloud', prefix: 'scsearch:' });
 
         if (premium && !ytDisabled) {
-            // Only use YouTube Mix if the seed is YouTube AND YouTube is actually working
-            // If the seed failed due to YouTube block, Mix will return 24 more unplayable tracks
+            // Tidal mirrors via YouTube (same as Apple Music) — premium only
+            strategies.push({ name: 'Tidal', prefix: 'tidalSearch:' });
+            // YouTube Mix: only if seed is a YouTube track and YouTube is working
             if (isYouTube && !ytDisabled) {
                 strategies.push({ name: 'YouTube Mix (Same Genre)', type: 'mix' });
             }
@@ -152,9 +155,9 @@ async function handleAutoplay(client, player, track, queue) {
         // STRATEGY: Artist Search (Last Resort)
         // -----------------------------------------------------------------
         if (candidates.length === 0) {
-            // Try artist name on Apple Music first, then SoundCloud, then YouTube Music (premium only)
-            const artistPrefixes = ['scsearch:', 'amsearch:'];
-            if (premium && !ytDisabled) artistPrefixes.push('ytmsearch:');
+            // Try artist name: Apple Music → Deezer → SoundCloud → Tidal/YouTube (premium)
+            const artistPrefixes = ['amsearch:', 'dzsearch:', 'scsearch:'];
+            if (premium && !ytDisabled) artistPrefixes.push('tidalSearch:', 'ytmsearch:');
 
             for (const prefix of artistPrefixes) {
                 if (candidates.length > 0) break;
@@ -186,13 +189,10 @@ async function handleAutoplay(client, player, track, queue) {
         const valid = candidates; // Already filtered for uniqueness
         const randomTrack = valid[Math.floor(Math.random() * valid.length)];
 
-        queue.songs.push(randomTrack);
+        // NOTE: Do NOT push to queue.songs here — the caller (play.js) handles that.
+        // Double-pushing caused the same track to play twice (repeat bug).
         const sig = getBaseSignature(randomTrack.info.author, randomTrack.info.title);
         queue.previousTracks.add(sig);
-
-        if (queue.textChannel) {
-            // Optional logging/embed here
-        }
 
         return randomTrack;
 

@@ -793,7 +793,22 @@ module.exports = {
                                 }
                             }
 
-                            // 2. Try SoundCloud (streams directly, doesn't mirror through YouTube)
+                            // 2. Try Deezer (direct stream — no YouTube dependency, great reliability)
+                            if (!fallbackTrack && failedSource !== 'deezer') {
+                                try {
+                                    const dzRes = await node.rest.resolve(`dzsearch:${fallbackQuery}`);
+                                    const rawDzData = dzRes?.data || dzRes?.tracks;
+                                    if (rawDzData) {
+                                        let tracks = Array.isArray(rawDzData) ? rawDzData : (rawDzData.tracks || []);
+                                        tracks = tracks.filter(t => t && t.info && t.info.title && !isRemixOrLive(t.info.title, fallbackQuery) && isNotSameTrack(t));
+                                        if (tracks.length > 0) fallbackTrack = tracks[0];
+                                    }
+                                } catch (dzErr) {
+                                    console.error('[Fallback] Deezer failed:', dzErr);
+                                }
+                            }
+
+                            // 3. Try SoundCloud (streams directly, doesn't mirror through YouTube)
                             if (!fallbackTrack) {
                                 try {
                                     const scRes = await node.rest.resolve(`scsearch:${fallbackQuery}`);
@@ -808,7 +823,22 @@ module.exports = {
                                 }
                             }
 
-                            // 3. Try YouTube as absolute last resort (premium only, and ONLY if original track was NOT YouTube)
+                            // 4. Try Tidal (premium only — mirrors via YouTube, same caveat as Apple Music)
+                            if (!fallbackTrack && isPremium && !interaction.client.youtubeDisabled && failedSource !== 'tidal') {
+                                try {
+                                    const tidalRes = await node.rest.resolve(`tidalSearch:${fallbackQuery}`);
+                                    const rawTidalData = tidalRes?.data || tidalRes?.tracks;
+                                    if (rawTidalData) {
+                                        let tracks = Array.isArray(rawTidalData) ? rawTidalData : (rawTidalData.tracks || []);
+                                        tracks = tracks.filter(t => t && t.info && t.info.title && !isRemixOrLive(t.info.title, fallbackQuery) && isNotSameTrack(t));
+                                        if (tracks.length > 0) fallbackTrack = tracks[0];
+                                    }
+                                } catch (tidalErr) {
+                                    console.error('[Fallback] Tidal failed:', tidalErr);
+                                }
+                            }
+
+                            // 5. Try YouTube as absolute last resort (premium only, and ONLY if original track was NOT YouTube)
                             // No point searching YouTube if the failure was caused by a YouTube block
                             if (!fallbackTrack && isPremium && !interaction.client.youtubeDisabled && !isYouTubeTrack) {
                                 try {
@@ -823,6 +853,7 @@ module.exports = {
                                     console.error('[Fallback] YouTube failed:', ytErr);
                                 }
                             }
+
 
                             if (fallbackTrack) {
                                 fallbackTrack.isFallback = true;

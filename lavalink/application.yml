@@ -67,21 +67,48 @@ plugins:
   lavasrc:
     providers: # Custom providers for track loading. This is the default
       - "scsearch:%QUERY%"
+      - "dzsearch:%QUERY%"       # Deezer search (direct stream)
+      - "tidalSearch:%QUERY%"   # Tidal search (mirrors via YouTube)
       - "ytsearch:\"%ISRC%\""
       - "ytsearch:%QUERY%"
     sources:
-      spotify: true # Enabled to allow Spotify links
-      applemusic: true # Enable Apple Music source as free alternative
-      deezer: false # Enable Deezer source
-      yandexmusic: false # Enable Yandex Music source
-      flow: false # Enable Flow source
-      youtube: false # Enable YouTube search source (https://github.com/topi314/LavaSrc#youtube)
+      spotify: true        # Enabled to allow Spotify links
+      applemusic: true     # Apple Music (mirrors via YouTube)
+      deezer: true         # Deezer (direct stream — no YouTube dependency)
+      tidal: true          # Tidal (mirrors via YouTube, premium-quality catalog)
+      yandexmusic: false
+      flow: false
+      youtube: false
     spotify:
       clientId: "ec3cd0ceb75a4170908e7d9f1dc45b6a"
       clientSecret: "a8421e57a937475c813c81103b7271e5"
-      countryCode: "US" # the country code you want to use for filtering the artists top tracks. See https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2
-      playlistLoadLimit: 6 # The number of pages to load for playlists.
-      albumLoadLimit: 6 # The number of pages to load for albums.
+      countryCode: "US"
+      playlistLoadLimit: 6
+      albumLoadLimit: 6
+    deezer:
+      # ┌─────────────────────────────────────────────────────────────────┐
+      # │  FILL IN THESE VALUES BEFORE RESTARTING LAVALINK               │
+      # │                                                                 │
+      # │  masterDecryptionKey: fixed constant, find in LavaSrc           │
+      # │    GitHub issues or the official LavaSrc Discord server.        │
+      # │                                                                 │
+      # │  arl: log into deezer.com → DevTools → Application →           │
+      # │    Cookies → copy the value of the "arl" cookie.               │
+      # └─────────────────────────────────────────────────────────────────┘
+      masterDecryptionKey: "g4el58wc0zvf9na1"
+      arl: "a6799e3ea77c3093393a8f9f07a9b5afddc8176138b5b692271b5a98c7fee9ccd223007f935efe457404be0267ce178e3f4d30378d321679fa6ac2d2135d6d76d66d3db4c928e79f12591364c5f398a38de684cb743716f36267e4248cedfedc"
+      formats: [ "FLAC", "MP3_320", "MP3_256", "MP3_128", "MP3_64", "AAC_64" ]
+    tidal:
+      # ┌─────────────────────────────────────────────────────────────────┐
+      # │  FILL IN THIS VALUE BEFORE RESTARTING LAVALINK                 │
+      # │                                                                 │
+      # │  token: log into tidal.com → DevTools → Network tab →          │
+      # │    any API request → copy the Bearer token from Authorization   │
+      # │    header (the part after "Bearer ").                          │
+      # └─────────────────────────────────────────────────────────────────┘
+      token: "eyJraWQiOiJ2OU1GbFhqWSIsImFsZyI6IkVTMjU2In0.eyJ0eXBlIjoibzJfYWNjZXNzIiwidWlkIjoyMDg5MTE3ODcsInNjb3BlIjoid191c3Igcl91c3IiLCJnVmVyIjowLCJzVmVyIjowLCJjaWQiOjgwNDksImN1ayI6IjliOTE3YjljLTFlZDUtNDE4Yy1hMzNmLTIzMTMwNGZhY2YzZSIsImNjIjoiUk8iLCJhdCI6IklOVEVSTkFMIiwiZXhwIjoxNzg1MjU1NTYyLCJzaWQiOiI3ODBkMWY4Ni1mYTA1LTRmYTEtOWQ4Zi1jMjg1YWIxZGJkZDAiLCJpc3MiOiJodHRwczovL2F1dGgudGlkYWwuY29tL3YxIn0.mgNzWvdftLfAdPEA_u2R7RFAfTQ2Vtmg2gXJs4I8NQT1jI9gt0-BQ9I4qwkHrADKugyj1HxZBK8xJ65Xm0GO-g"
+      countryCode: "US"
+      searchLimit: 6
   youtube:
     enabled: true
     allowSearch: true
