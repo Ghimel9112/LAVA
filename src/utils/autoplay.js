@@ -91,11 +91,12 @@ async function handleAutoplay(client, player, track, queue) {
         };
 
         // -----------------------------------------------------------------
-        // DEFINE STRATEGIES (Order: Apple Music -> Deezer -> SoundCloud -> Tidal/YT [premium])
-        // Apple Music is tried first for best quality.
-        // Deezer streams directly (no YouTube dependency) — great reliability.
-        // SoundCloud is the next direct-stream fallback.
-        // Tidal and YouTube are last resort — both mirror via YouTube, premium only.
+        // DEFINE STRATEGIES (Order: Apple Music -> Deezer -> Tidal -> SoundCloud -> YouTube [premium])
+        // Apple Music  — tried first for best catalog quality.
+        // Deezer       — direct stream, no YouTube dependency.
+        // Tidal        — high-quality catalog, mirrors via YouTube.
+        // SoundCloud   — direct stream, last non-YouTube fallback.
+        // YouTube      — premium only, absolute last resort.
         // -----------------------------------------------------------------
         const strategies = [];
         const isYouTube = track.info.sourceName === 'youtube' || track.info.sourceName === 'youtube-music';
@@ -107,14 +108,13 @@ async function handleAutoplay(client, player, track, queue) {
             .trim();
 
         strategies.push({ name: 'Apple Music', prefix: 'amsearch:' });
-        strategies.push({ name: 'Deezer', prefix: 'dzsearch:' });       // Direct stream, no YouTube dependency
+        strategies.push({ name: 'Deezer', prefix: 'dzsearch:' });
+        strategies.push({ name: 'Tidal', prefix: 'tidalSearch:' });
         strategies.push({ name: 'SoundCloud', prefix: 'scsearch:' });
 
         if (premium && !ytDisabled) {
-            // Tidal mirrors via YouTube (same as Apple Music) — premium only
-            strategies.push({ name: 'Tidal', prefix: 'tidalSearch:' });
             // YouTube Mix: only if seed is a YouTube track and YouTube is working
-            if (isYouTube && !ytDisabled) {
+            if (isYouTube) {
                 strategies.push({ name: 'YouTube Mix (Same Genre)', type: 'mix' });
             }
             strategies.push({ name: 'YouTube Music', prefix: 'ytmsearch:' });
@@ -155,9 +155,9 @@ async function handleAutoplay(client, player, track, queue) {
         // STRATEGY: Artist Search (Last Resort)
         // -----------------------------------------------------------------
         if (candidates.length === 0) {
-            // Try artist name: Apple Music → Deezer → SoundCloud → Tidal/YouTube (premium)
-            const artistPrefixes = ['amsearch:', 'dzsearch:', 'scsearch:'];
-            if (premium && !ytDisabled) artistPrefixes.push('tidalSearch:', 'ytmsearch:');
+            // Try artist name: Apple Music → Deezer → Tidal → SoundCloud → YouTube (premium)
+            const artistPrefixes = ['amsearch:', 'dzsearch:', 'tidalSearch:', 'scsearch:'];
+            if (premium && !ytDisabled) artistPrefixes.push('ytmsearch:');
 
             for (const prefix of artistPrefixes) {
                 if (candidates.length > 0) break;

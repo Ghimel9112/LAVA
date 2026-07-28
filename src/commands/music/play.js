@@ -649,7 +649,7 @@ module.exports = {
                         const nextTrack = currentQueue.songs[0];
                         currentQueue.player.playTrack({ encodedTrack: nextTrack.encoded });
                     } else if (currentQueue.autoplay && finishedTrack) {
-                        console.log('[Autoplay] Queue empty. Finding next track (AM -> SC -> YT)...');
+                        console.log('[Autoplay] Queue empty. Finding next track (AM -> Deezer -> Tidal -> SC -> YT)...');
                         try {
                             const newTrack = await handleAutoplay(interaction.client, player, finishedTrack, currentQueue);
                             if (newTrack) {
@@ -745,7 +745,7 @@ module.exports = {
                     let fallbackMsg;
                     if (shouldSendMessage) {
                         try {
-                            fallbackMsg = await q.textChannel.send({ embeds: [new EmbedBuilder().setColor('Orange').setDescription('⚠️ Track failed to load. Attempting to fall back to alternative sources (Apple Music, SoundCloud, YouTube)...')] });
+                            fallbackMsg = await q.textChannel.send({ embeds: [new EmbedBuilder().setColor('Orange').setDescription('⚠️ Track failed to load. Attempting to fall back to alternative sources (Apple Music, Deezer, Tidal, SoundCloud, YouTube)...')] });
                         } catch (e) {}
                     }
 
@@ -808,7 +808,22 @@ module.exports = {
                                 }
                             }
 
-                            // 3. Try SoundCloud (streams directly, doesn't mirror through YouTube)
+                            // 3. Try Tidal (mirrors via YouTube, same caveat as Apple Music)
+                            if (!fallbackTrack && failedSource !== 'tidal') {
+                                try {
+                                    const tidalRes = await node.rest.resolve(`tidalSearch:${fallbackQuery}`);
+                                    const rawTidalData = tidalRes?.data || tidalRes?.tracks;
+                                    if (rawTidalData) {
+                                        let tracks = Array.isArray(rawTidalData) ? rawTidalData : (rawTidalData.tracks || []);
+                                        tracks = tracks.filter(t => t && t.info && t.info.title && !isRemixOrLive(t.info.title, fallbackQuery) && isNotSameTrack(t));
+                                        if (tracks.length > 0) fallbackTrack = tracks[0];
+                                    }
+                                } catch (tidalErr) {
+                                    console.error('[Fallback] Tidal failed:', tidalErr);
+                                }
+                            }
+
+                            // 4. Try SoundCloud (streams directly, doesn't mirror through YouTube)
                             if (!fallbackTrack) {
                                 try {
                                     const scRes = await node.rest.resolve(`scsearch:${fallbackQuery}`);
@@ -820,21 +835,6 @@ module.exports = {
                                     }
                                 } catch (scErr) {
                                     console.error('[Fallback] SoundCloud failed:', scErr);
-                                }
-                            }
-
-                            // 4. Try Tidal (premium only — mirrors via YouTube, same caveat as Apple Music)
-                            if (!fallbackTrack && isPremium && !interaction.client.youtubeDisabled && failedSource !== 'tidal') {
-                                try {
-                                    const tidalRes = await node.rest.resolve(`tidalSearch:${fallbackQuery}`);
-                                    const rawTidalData = tidalRes?.data || tidalRes?.tracks;
-                                    if (rawTidalData) {
-                                        let tracks = Array.isArray(rawTidalData) ? rawTidalData : (rawTidalData.tracks || []);
-                                        tracks = tracks.filter(t => t && t.info && t.info.title && !isRemixOrLive(t.info.title, fallbackQuery) && isNotSameTrack(t));
-                                        if (tracks.length > 0) fallbackTrack = tracks[0];
-                                    }
-                                } catch (tidalErr) {
-                                    console.error('[Fallback] Tidal failed:', tidalErr);
                                 }
                             }
 

@@ -65,12 +65,10 @@ logging:
 
 plugins:
   lavasrc:
-    providers: # Custom providers for track loading. This is the default
-      - "scsearch:%QUERY%"
-      - "dzsearch:%QUERY%"       # Deezer search (direct stream)
-      - "tidalSearch:%QUERY%"   # Tidal search (mirrors via YouTube)
-      - "ytsearch:\"%ISRC%\""
-      - "ytsearch:%QUERY%"
+    providers: # Used by LavaSrc to resolve a playable stream for mirror sources (Apple Music, Tidal, Spotify)
+      - "dzsearch:%QUERY%"      # Deezer first — direct stream, no YouTube dependency, most reliable
+      - "ytsearch:\"%ISRC%\""  # YouTube by ISRC (precise match, ignored if track has no ISRC)
+      - "ytsearch:%QUERY%"      # YouTube by query (last resort fallback)
     sources:
       spotify: true        # Enabled to allow Spotify links
       applemusic: true     # Apple Music (mirrors via YouTube)
@@ -119,7 +117,6 @@ plugins:
       - ANDROID_VR
       - WEB
       - WEBEMBEDDED
-      - TVHTML5EMBEDDED
     oauth:
       enabled: true
       refreshToken: "1//044BVB2YHSQIWCgYIARAAGAQSNwF-L9IrUyFRtw8ysp9SB5iapEsIEXNyxhd8-WmVCcVBDYmTXqWWeGVIiFWBOjIIodLHYvY2fCU"
