@@ -649,6 +649,10 @@ module.exports = {
                         const nextTrack = currentQueue.songs[0];
                         currentQueue.player.playTrack({ encodedTrack: nextTrack.encoded });
                     } else if (currentQueue.autoplay && finishedTrack) {
+                        // Don't double-trigger autoplay if the exception handler is currently
+                        // running its async fallback search — it will emit 'stopped' itself
+                        // once it's done, which will re-enter this handler cleanly.
+                        if (currentQueue.isHandlingException) return;
                         console.log('[Autoplay] Queue empty. Finding next track (AM -> Deezer -> Tidal -> SC -> YT)...');
                         try {
                             const newTrack = await handleAutoplay(interaction.client, player, finishedTrack, currentQueue);
@@ -696,6 +700,9 @@ module.exports = {
                 const q = interaction.client.queue.get(interaction.guild.id);
                 if (!q) return;
 
+                // Prevent the 'end' handler from also triggering autoplay while we handle this
+                q.isHandlingException = true;
+
                 const guildId = interaction.guild.id;
                 const now = Date.now();
                 const COOLDOWN_MS = 5000; // Min 5s between exception messages per guild
@@ -716,6 +723,7 @@ module.exports = {
                                 .setDescription('⚠️ Multiple tracks failed to load. Stopping playback to avoid spam. Please try a different song or source.')]
                         });
                     } catch (e) {}
+                    q.isHandlingException = false;
                     q.isIntentionalLeave = true;
                     await interaction.client.shoukaku.leaveVoiceChannel(guildId);
                     return;
@@ -873,12 +881,15 @@ module.exports = {
 
                         if (!fallbackSucceeded) {
                             if (fallbackMsg) {
-                                fallbackMsg.edit({ embeds: [new EmbedBuilder().setColor('Red').setDescription('❌ All fallback sources (Apple Music, SoundCloud, YouTube) failed to load the track. Skipping to the next song.')] }).then(m => setTimeout(()=>m.delete().catch(()=>{}), 7000)).catch(()=>{});
+                                fallbackMsg.edit({ embeds: [new EmbedBuilder().setColor('Red').setDescription('❌ All fallback sources (Apple Music, Deezer, Tidal, SoundCloud, YouTube) failed. Skipping to the next song.')] }).then(m => setTimeout(()=>m.delete().catch(()=>{}), 7000)).catch(()=>{});
                             } else if (shouldSendMessage) {
-                                q.textChannel.send({ embeds: [new EmbedBuilder().setColor('Red').setDescription('❌ All fallback sources (Apple Music, SoundCloud, YouTube) failed to load the track. Skipping to the next song.')] }).then(m => setTimeout(()=>m.delete().catch(()=>{}), 7000)).catch(()=>{});
+                                q.textChannel.send({ embeds: [new EmbedBuilder().setColor('Red').setDescription('❌ All fallback sources (Apple Music, Deezer, Tidal, SoundCloud, YouTube) failed. Skipping to the next song.')] }).then(m => setTimeout(()=>m.delete().catch(()=>{}), 7000)).catch(()=>{});
                             }
                             // Skip to the next track since all fallbacks failed
+                            q.isHandlingException = false;
                             q.player.emit('end', { reason: 'stopped' });
+                        } else {
+                            q.isHandlingException = false;
                         }
                     } else {
                         userMessage = `⚠️ Error: ${errMsg}`;
@@ -891,6 +902,7 @@ module.exports = {
                             } catch (e) {}
                         }
                         // Skip to the next track
+                        q.isHandlingException = false;
                         q.player.emit('end', { reason: 'stopped' });
                     }
                 // (End of exception handler block)

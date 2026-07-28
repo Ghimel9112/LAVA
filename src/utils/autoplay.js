@@ -107,6 +107,22 @@ async function handleAutoplay(client, player, track, queue) {
             .replace(/VEVO$/gi, '')
             .trim();
 
+        // For SoundCloud seeds, the 'author' field is the channel/uploader (e.g. "Gabi HD"),
+        // NOT the actual artist. Most SC uploads use "Artist - Title" in the title field.
+        // Parse the real artist out of the title to get relevant autoplay results.
+        let searchAuthor = cleanAuthor;
+        let searchTitle = title;
+        if (track.info.sourceName === 'soundcloud' && title.includes(' - ')) {
+            const dashIdx = title.indexOf(' - ');
+            const parsedArtist = title.substring(0, dashIdx).trim();
+            const parsedTitle = title.substring(dashIdx + 3).trim();
+            if (parsedArtist.length > 1 && parsedTitle.length > 1) {
+                searchAuthor = parsedArtist;
+                searchTitle = parsedTitle;
+                console.log(`[Autoplay] SoundCloud seed: real artist="${searchAuthor}", title="${searchTitle}" (uploader was "${cleanAuthor}")`);
+            }
+        }
+
         strategies.push({ name: 'Apple Music', prefix: 'amsearch:' });
         strategies.push({ name: 'Deezer', prefix: 'dzsearch:' });
         strategies.push({ name: 'Tidal', prefix: 'tidalSearch:' });
@@ -131,7 +147,7 @@ async function handleAutoplay(client, player, track, queue) {
                 if (strategy.type === 'mix') {
                     query = `https://www.youtube.com/watch?v=${identifier}&list=RD${identifier}`;
                 } else {
-                    query = `${strategy.prefix}${cleanAuthor} - ${title}`;
+                    query = `${strategy.prefix}${searchAuthor} - ${searchTitle}`;
                 }
                 
                 const res = await node.rest.resolve(query);
@@ -162,7 +178,7 @@ async function handleAutoplay(client, player, track, queue) {
             for (const prefix of artistPrefixes) {
                 if (candidates.length > 0) break;
                 try {
-                    const res = await node.rest.resolve(`${prefix}${cleanAuthor}`);
+                    const res = await node.rest.resolve(`${prefix}${searchAuthor}`);
                     const loadType = res?.loadType ? res.loadType.toLowerCase() : '';
                     if (loadType !== 'empty' && loadType !== 'error' && res && res.data) {
                         let tracks = Array.isArray(res.data) ? res.data : (res.data.tracks || []);
