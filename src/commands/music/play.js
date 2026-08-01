@@ -933,7 +933,7 @@ module.exports = {
             interaction.client.queue.set(interaction.guild.id, newQueue);
 
             // Clean up the initial command reply
-            await interaction.deleteReply().catch(() => { });
+            await interaction.editReply({ content: '', embeds: [], components: [] }).catch(() => { });
 
             await player.playTrack({ encodedTrack: track.encoded });
 

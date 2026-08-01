@@ -37,7 +37,8 @@ module.exports = {
         if (expected) embed.addFields({ name: '✅ Expected Behavior', value: expected });
 
         try {
-            const bugReportChannel = await interaction.client.channels.fetch('1521076407160012800');
+            const bugReportChannel = await interaction.client.channels.fetch(process.env.BUG_REPORT_CHANNEL_ID);
+            if (!bugReportChannel) return interaction.reply({ content: '❌ Bug report channel is not configured.', flags: MessageFlags.Ephemeral });
             await bugReportChannel.send({ embeds: [embed] });
 
             const confirmEmbed = new EmbedBuilder()
