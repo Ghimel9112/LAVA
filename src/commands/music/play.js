@@ -109,7 +109,7 @@ function shuffleQueue(queue) {
 // COMPONENT COLLECTOR
 // ---------------------------------------------------------
 
-async function setupCollector(message, player, queue, interaction) {
+async function setupCollector(message, player, queue, interaction, guildId) {
     const collector = message.createMessageComponentCollector({
         componentType: ComponentType.Button,
         time: 0
@@ -132,9 +132,9 @@ async function setupCollector(message, player, queue, interaction) {
                     break;
                 case 'stop':
                     queue.isIntentionalLeave = true;
-                    interaction.client.queue.delete(interaction.guild.id);
+                    interaction.client.queue.delete(guildId);
                     player.stopTrack();
-                    await interaction.client.shoukaku.leaveVoiceChannel(interaction.guild.id);
+                    await interaction.client.shoukaku.leaveVoiceChannel(guildId);
                     const disabledRows = i.message.components.map(row => {
                         const r = ActionRowBuilder.from(row);
                         r.components.forEach(c => c.setDisabled(true));
@@ -250,6 +250,7 @@ module.exports = {
     async execute(interaction) {
         await interaction.deferReply();
 
+        const guildId = interaction.guild.id;
         const { channel } = interaction.member.voice;
         if (!channel) return interaction.editReply('You need to be in a voice channel to play music!');
 
@@ -579,12 +580,12 @@ module.exports = {
 
             // --- PLAYER EVENT: START ---
             player.on('start', async (data) => {
-                const currentQueue = interaction.client.queue.get(interaction.guild.id);
+                const currentQueue = interaction.client.queue.get(guildId);
                 if (!currentQueue || !currentQueue.songs[0]) return;
                 const currentTrack = currentQueue.songs[0];
 
                 // A track started successfully — reset the exception failure counter
-                exceptionState.delete(interaction.guild.id);
+                exceptionState.delete(guildId);
 
                 if (currentQueue.lastMessage) {
                     try { await currentQueue.lastMessage.delete(); } catch (e) { }
@@ -611,7 +612,7 @@ module.exports = {
                 const msg = await channel.send({ embeds: [embed], components: buttons });
                 currentQueue.lastMessage = msg;
 
-                setupCollector(msg, player, currentQueue, interaction);
+                setupCollector(msg, player, currentQueue, interaction, guildId);
             });
 
             player.on('end', async (data) => {
@@ -619,7 +620,7 @@ module.exports = {
                 // Only process the queue progression if the track naturally finished or was explicitly stopped
                 if (reason !== 'finished' && reason !== 'stopped') return;
                 
-                const currentQueue = interaction.client.queue.get(interaction.guild.id);
+                const currentQueue = interaction.client.queue.get(guildId);
                 if (currentQueue && currentQueue.player) {
                     const finishedTrack = currentQueue.songs[0];
                     if (finishedTrack) {
@@ -667,18 +668,18 @@ module.exports = {
                         console.log('[Autoplay] No valid candidates found.');
                         if (!currentQueue.twentyFourSeven) {
                             currentQueue.isIntentionalLeave = true;
-                            await interaction.client.shoukaku.leaveVoiceChannel(interaction.guild.id);
+                                await interaction.client.shoukaku.leaveVoiceChannel(guildId);
                         }
                     } else if (!currentQueue.twentyFourSeven) {
                         currentQueue.isIntentionalLeave = true;
-                        await interaction.client.shoukaku.leaveVoiceChannel(interaction.guild.id);
+                        await interaction.client.shoukaku.leaveVoiceChannel(guildId);
                     }
                 }
             });
 
             player.on('closed', async (r) => {
                 console.log(r);
-                const closedQueue = interaction.client.queue.get(interaction.guild.id);
+                const closedQueue = interaction.client.queue.get(guildId);
                 if (closedQueue) {
                     try {
                         if (closedQueue.lastMessage) {
@@ -693,17 +694,16 @@ module.exports = {
                     } catch (e) {
                         console.error('Failed to send disconnect message:', e);
                     }
-                    interaction.client.queue.delete(interaction.guild.id);
+                    interaction.client.queue.delete(guildId);
                 }
             });
             player.on('exception', async d => {
-                const q = interaction.client.queue.get(interaction.guild.id);
+                const q = interaction.client.queue.get(guildId);
                 if (!q) return;
 
                 // Prevent the 'end' handler from also triggering autoplay while we handle this
                 q.isHandlingException = true;
 
-                const guildId = interaction.guild.id;
                 const now = Date.now();
                 const COOLDOWN_MS = 5000; // Min 5s between exception messages per guild
                 const MAX_CONSECUTIVE_FAILS = 6; // Raised to allow AM/SC fallbacks to cycle during YouTube outages

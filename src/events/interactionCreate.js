@@ -1,5 +1,4 @@
 const { Events, EmbedBuilder, MessageFlags, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const db = require('../utils/db');
 
 function truncate(str, max) {
     return str.length > max ? str.slice(0, max - 1) + '…' : str;
@@ -124,66 +123,6 @@ module.exports = {
 
                 await interaction.update({ embeds: [embed], components: [] });
                 return;
-            }
-
-            // --- Premium Request Buttons ---
-            const parts = customId.split('_');
-            const action = parts[0];
-            const guildId = parts[1];
-            const requesterId = parts[2];
-
-            if (action === 'accept' || action === 'reject') {
-                // Ensure only owner can click these (though it's in their DM, safety check)
-                if (interaction.user.id !== process.env.OWNER_ID) {
-                    return interaction.reply({ content: 'You are not authorized to use this button.', flags: MessageFlags.Ephemeral });
-                }
-
-                if (action === 'accept') {
-                    db.addPremium(guildId);
-                    db.removeRequest(guildId);
-                    const embed = new EmbedBuilder()
-                        .setColor('Green')
-                        .setTitle('Premium Request Accepted')
-                        .setDescription(`Guild ID: ${guildId} has been granted premium access.`);
-
-                    await interaction.update({ embeds: [embed], components: [] });
-
-                    // Notify the requester
-                    try {
-                        const requester = await interaction.client.users.fetch(requesterId);
-                        const guild = await interaction.client.guilds.fetch(guildId);
-                        const notifyEmbed = new EmbedBuilder()
-                            .setColor('Green')
-                            .setTitle('✅ Premium Request Accepted!')
-                            .setDescription(`Your premium request for **${guild.name}** has been accepted!\n\nYour server now has premium access.`)
-                            .setTimestamp();
-                        await requester.send({ embeds: [notifyEmbed] });
-                    } catch (err) {
-                        console.error('Failed to notify requester:', err);
-                    }
-                } else if (action === 'reject') {
-                    db.removeRequest(guildId);
-                    const embed = new EmbedBuilder()
-                        .setColor('Red')
-                        .setTitle('Premium Request Rejected')
-                        .setDescription(`Guild ID: ${guildId} has been denied premium access.`);
-
-                    await interaction.update({ embeds: [embed], components: [] });
-
-                    // Notify the requester
-                    try {
-                        const requester = await interaction.client.users.fetch(requesterId);
-                        const guild = await interaction.client.guilds.fetch(guildId);
-                        const notifyEmbed = new EmbedBuilder()
-                            .setColor('Red')
-                            .setTitle('❌ Premium Request Rejected')
-                            .setDescription(`Your premium request for **${guild.name}** has been rejected.`)
-                            .setTimestamp();
-                        await requester.send({ embeds: [notifyEmbed] });
-                    } catch (err) {
-                        console.error('Failed to notify requester:', err);
-                    }
-                }
             }
         }
     },

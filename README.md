@@ -2,13 +2,26 @@
 
 A feature-rich Discord music bot powered by **Lavalink** and **Shoukaku**, with premium features unlocked via [lavabot.site](https://lavabot.site).
 
+Hosted on a Google Cloud VM.
+
 ---
 
-## Setup
+## Setup (Production / Google Cloud VM)
 
-1. Copy `.env.example` to `.env` and fill in all values (see below).
-2. `npm install`
-3. Start Lavalink, then `node start.js` (or `npm start`).
+1. Clone the repository to your VM.
+2. Copy `.env.example` to `.env` and fill in all values (see below).
+3. Run `npm install`.
+4. Start Lavalink, then start the bot using `node start.js` or your process manager of choice (PM2, systemd, etc.).
+
+### Lavalink on a VM
+
+Ensure Java is installed on the VM:
+
+```bash
+java -jar lavalink/Lavalink.jar
+```
+
+Verify Lavalink is reachable on port `2333` before starting the bot.
 
 ---
 
@@ -25,6 +38,21 @@ A feature-rich Discord music bot powered by **Lavalink** and **Shoukaku**, with 
 | `LAVA_URL` | ❌ | `localhost:2333` | Lavalink node URL |
 | `LAVA_AUTH` | ❌ | `youshallnotpass` | Lavalink node password |
 | `GUILD_ID` | ❌ | — | Guild ID for instant command registration during development |
+| `BUG_REPORT_CHANNEL_ID` | ❌ | — | Discord channel ID for bug reports |
+
+---
+
+## Process Management
+
+For production on a Google Cloud VM, use PM2 or systemd instead of `start.bat` or `start.js` directly.
+
+Example with PM2:
+
+```bash
+pm2 start start.js --name lavabot
+pm2 save
+pm2 startup
+```
 
 ---
 

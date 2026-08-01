@@ -1,5 +1,7 @@
 'use strict';
 
+const fs = require('fs');
+const path = require('path');
 const BASE_URL = process.env.LAVA_API_BASE || 'https://lavabot.site';
 const TIMEOUT_MS = 8000;
 const PER_GUILD_TTL_MS = 60 * 1000; // 60 seconds
@@ -66,6 +68,11 @@ const premiumService = {
             this.premiumGuilds = new Set(guilds);
             // Invalidate per-guild cache so next call re-fetches fresh data
             this._perGuildCache.clear();
+
+            const dbPath = path.join(__dirname, '..', 'premium_guilds.json');
+            const tmpPath = dbPath + '.tmp';
+            fs.writeFileSync(tmpPath, JSON.stringify(guilds, null, 2));
+            fs.renameSync(tmpPath, dbPath);
 
             console.log(`[PremiumService] Synced ${guilds.length} premium guild(s) from ${data.environment || 'unknown'} environment.`);
         } catch (err) {
