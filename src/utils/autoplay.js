@@ -70,26 +70,6 @@ async function handleAutoplay(client, player, track, queue) {
                 .trim();
         };
 
-        const getBaseSignature = (author, title) => {
-            const cleanTitle = (title || '').toLowerCase()
-                .replace(/\(.*?\)/g, '')
-                .replace(/\[.*?\]/g, '')
-                .replace(/remix/g, '')
-                .replace(/mix/g, '')
-                .replace(/radio edit/g, '')
-                .replace(/official video/g, '')
-                .replace(/official audio/g, '')
-                .replace(/lyric video/g, '')
-                .replace(/[^a-z0-9]/g, '')
-                .trim();
-
-            const cleanAuthor = (author || '').toLowerCase()
-                .replace(/[^a-z0-9]/g, '')
-                .trim();
-
-            return `${cleanAuthor}-${cleanTitle}`;
-        };
-
         const getNewTracks = (tracks) => {
             return tracks.filter(t => {
                 if (!t || !t.info || t.info.identifier === identifier) return false;
@@ -285,6 +265,26 @@ async function handleAutoplay(client, player, track, queue) {
         console.error('[Autoplay] Critical error:', error);
         return null;
     }
+}
+
+function getBaseSignature(author, title) {
+    const cleanTitle = (title || '').toLowerCase()
+        .replace(/\(.*?\)/g, '')
+        .replace(/\[.*?\]/g, '')
+        .replace(/remix/g, '')
+        .replace(/mix/g, '')
+        .replace(/radio edit/g, '')
+        .replace(/official video/g, '')
+        .replace(/official audio/g, '')
+        .replace(/lyric video/g, '')
+        .replace(/[^a-z0-9]/g, '')
+        .trim();
+    
+    const cleanAuthor = (author || '').toLowerCase()
+        .replace(/[^a-z0-9]/g, '')
+        .trim();
+    
+    return `${cleanAuthor}-${cleanTitle}`;
 }
 
 module.exports = { handleAutoplay, getBaseSignature };
