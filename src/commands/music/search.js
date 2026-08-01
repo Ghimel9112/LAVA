@@ -21,14 +21,28 @@ module.exports = {
         if (!node) return interaction.editReply('❌ No Lavalink node is available.');
 
         const isPremium = await premiumService.isPremium(interaction.guild.id);
-        const searchPrefix = (isPremium && !interaction.client.youtubeDisabled) ? 'ytsearch:' : 'amsearch:';
+        const ytDisabled = interaction.client.youtubeDisabled || false;
 
-        const res = await node.rest.resolve(`${searchPrefix}${query}`);
-        if (!res?.data) return interaction.editReply('❌ No results found.');
+        let searchPrefix = 'amsearch:';
+        let tracks = [];
 
-        const tracks = (Array.isArray(res.data) ? res.data : (res.data.tracks || []))
-            .filter(t => t && t.info && t.info.title)
-            .slice(0, 10);
+        // Try Apple Music first for all users
+        const amRes = await node.rest.resolve(`amsearch:${query}`);
+        if (amRes?.data) {
+            tracks = (Array.isArray(amRes.data) ? amRes.data : (amRes.data.tracks || []))
+                .filter(t => t && t.info && t.info.title)
+                .slice(0, 10);
+        }
+
+        // If no AM results and user is premium, try YouTube
+        if (tracks.length === 0 && isPremium && !ytDisabled) {
+            const ytRes = await node.rest.resolve(`ytsearch:${query}`);
+            if (ytRes?.data) {
+                tracks = (Array.isArray(ytRes.data) ? ytRes.data : (ytRes.data.tracks || []))
+                    .filter(t => t && t.info && t.info.title)
+                    .slice(0, 10);
+            }
+        }
 
         if (tracks.length === 0) return interaction.editReply('❌ No results found.');
 

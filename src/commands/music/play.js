@@ -322,51 +322,33 @@ module.exports = {
                     }
                 }
             } else {
-                // Text query: try YouTube search first for Premium users
-                let ytFailed = false;
+                // Text query: try Apple Music -> Deezer -> Tidal -> SoundCloud -> YouTube (minimize YouTube)
+                const strategies = [
+                    { name: 'Apple Music', prefix: 'amsearch:' },
+                    { name: 'Deezer', prefix: 'dzsearch:' },
+                    { name: 'Tidal', prefix: 'tidalSearch:' },
+                    { name: 'SoundCloud', prefix: 'scsearch:' },
+                ];
                 if (!interaction.client.youtubeDisabled) {
-                    try {
-                        const ytRes = await node.rest.resolve(`ytsearch:${query}`);
-                        console.log(`[DEBUG] Premium YouTube Search: type=${ytRes?.loadType}`);
-                        const ytLoadType = ytRes?.loadType ? ytRes.loadType.toLowerCase() : '';
-                        const ytData = ytRes?.data || ytRes?.tracks;
-                        
-                        if (ytData && ytLoadType !== 'empty' && ytLoadType !== 'error') {
-                            const tracks = Array.isArray(ytData) ? ytData : (ytData.tracks || []);
-                            if (tracks.length > 0) {
-                                searchResult = { loadType: 'track', data: tracks[0] };
-                                console.log(`[DEBUG] Premium YouTube match: ${tracks[0].info.title}`);
-                            } else {
-                                ytFailed = true;
-                            }
-                        } else {
-                            ytFailed = true;
-                        }
-                    } catch (e) {
-                        ytFailed = true;
-                    }
-                } else {
-                    ytFailed = true;
+                    strategies.push({ name: 'YouTube', prefix: 'ytsearch:' });
                 }
 
-                // Fallback to Apple Music/SoundCloud if YouTube fails
-                if (ytFailed || !searchResult) {
-                    await interaction.channel.send('⚠️ Could not load the song on YouTube. Falling back to a similar source (Apple Music/Soundcloud)...').catch(()=>{});
-                    
-                    const res = await node.rest.resolve(`amsearch:${query}`);
-                    console.log(`[DEBUG] Premium Fallback Apple Music Search: type=${res?.loadType}`);
-
-                    const loadType = res?.loadType ? res.loadType.toLowerCase() : '';
-                    const rawData = res?.data || res?.tracks;
-
-                    if (rawData && loadType !== 'empty' && loadType !== 'error') {
-                        let tracks = Array.isArray(rawData) ? rawData : (rawData.tracks || []);
-                        tracks = tracks.filter(t => t && t.info && t.info.title);
-                        
-                        if (tracks.length > 0) {
-                            searchResult = { loadType: 'track', data: tracks[0] };
-                            console.log(`[DEBUG] Premium Fallback match: ${tracks[0].info.title}`);
+                for (const strategy of strategies) {
+                    if (searchResult) break;
+                    try {
+                        const res = await node.rest.resolve(`${strategy.prefix}${query}`);
+                        const loadType = res?.loadType ? res.loadType.toLowerCase() : '';
+                        const rawData = res?.data || res?.tracks;
+                        if (rawData && loadType !== 'empty' && loadType !== 'error') {
+                            let tracks = Array.isArray(rawData) ? rawData : (rawData.tracks || []);
+                            tracks = tracks.filter(t => t && t.info && t.info.title);
+                            if (tracks.length > 0) {
+                                searchResult = { loadType: 'track', data: tracks[0] };
+                                console.log(`[DEBUG] Premium ${strategy.name} match: ${tracks[0].info.title}`);
+                            }
                         }
+                    } catch (e) {
+                        console.warn(`[DEBUG] Premium ${strategy.name} search failed: ${e.message}`);
                     }
                 }
             }
@@ -667,8 +649,10 @@ module.exports = {
 
                         console.log('[Autoplay] No valid candidates found.');
                         if (!currentQueue.twentyFourSeven) {
-                            currentQueue.isIntentionalLeave = true;
-                                await interaction.client.shoukaku.leaveVoiceChannel(guildId);
+                            currentQueue.songs = [];
+                            try {
+                                await currentQueue.textChannel.send({ embeds: [new EmbedBuilder().setColor('Orange').setDescription('⚠️ Autoplay could not find any related songs. Use `/play` to add more tracks.')] });
+                            } catch (e) {}
                         }
                     } else if (!currentQueue.twentyFourSeven) {
                         currentQueue.isIntentionalLeave = true;
