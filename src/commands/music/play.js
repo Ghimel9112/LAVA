@@ -125,12 +125,11 @@ module.exports = {
                     }
                 }
             } else {
-                // Text query: try Apple Music -> Deezer -> Tidal -> SoundCloud -> YouTube (minimize YouTube)
+                // Text query: try Apple Music -> Deezer -> Tidal -> YouTube (minimize YouTube)
                 const strategies = [
                     { name: 'Apple Music', prefix: 'amsearch:' },
                     { name: 'Deezer', prefix: 'dzsearch:' },
                     { name: 'Tidal', prefix: 'tidalSearch:' },
-                    { name: 'SoundCloud', prefix: 'scsearch:' },
                 ];
                 if (!interaction.client.youtubeDisabled) {
                     strategies.push({ name: 'YouTube', prefix: 'ytsearch:' });
@@ -257,23 +256,7 @@ module.exports = {
                 }
             }
 
-            // Strategy 3: SoundCloud search as fallback
-            if (candidates.length < 5) {
-                try {
-                    const scResult = await node.rest.resolve(`scsearch:${audioQuery}`);
-                    const scLoadType = scResult?.loadType ? scResult.loadType.toLowerCase() : '';
-                    if (scLoadType !== 'empty' && scLoadType !== 'error' && scResult && scResult.data) {
-                        const scTracks = (Array.isArray(scResult.data) ? scResult.data : (scResult.data.tracks || []))
-                            .filter(t => t && t.info && t.info.title);
-                        candidates.push(...scTracks.slice(0, 5));
-                        console.log(`[Search] SoundCloud found ${scTracks.length} candidates`);
-                    }
-                } catch (e) {
-                    console.warn('[Search] SoundCloud search failed:', e.message);
-                }
-            }
-
-            // Strategy 4: YouTube search ONLY for premium guilds where other sources failed
+            // Strategy 3: YouTube search ONLY for premium guilds where other sources failed
             if (candidates.length === 0 && isPremium && !interaction.client.youtubeDisabled) {
                 try {
                     const ytResult = await node.rest.resolve(`ytsearch:${audioQuery}`);
