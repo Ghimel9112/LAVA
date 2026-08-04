@@ -2,6 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const YouTube = require('youtube-sr').default;
 const premiumService = require('../../services/premiumService');
 const { attachPlayerEvents, cleanTitle, isRemixOrLive } = require('../../utils/playerSetup');
+const historyTracker = require('../../services/autoplay/historyTracker');
 
 // Extracts meaningful words from a string for comparison
 function extractWords(str) {
@@ -313,10 +314,8 @@ module.exports = {
             // Add all tracks to existing queue
             for (const t of allTracks) {
                 queue.songs.push(t);
-                if (queue.previousTracks) queue.previousTracks.add(`${t.info.author} - ${t.info.title}`.toLowerCase());
-                if (!queue.seedTracks) queue.seedTracks = [];
-                queue.seedTracks.push(t);
-                if (queue.seedTracks.length > 10) queue.seedTracks.shift();
+                // Record in history for autoplay dedup
+                await historyTracker.addPlayed(interaction.guild.id, t);
             }
 
             const embed = new EmbedBuilder().setColor('Red').setDescription(
@@ -348,6 +347,9 @@ module.exports = {
 
             await attachPlayerEvents(player, interaction, guildId, isPremium, node);
 
+            // Record seed track in history
+            await historyTracker.addPlayed(interaction.guild.id, track);
+
             const newQueue = {
                 player,
                 songs: [track],
@@ -355,8 +357,6 @@ module.exports = {
                 autoplay: false,
                 loop: 'off',
                 twentyFourSeven: false,
-                previousTracks: new Set([`${track.info.author} - ${track.info.title}`.toLowerCase()]),
-                seedTracks: [track], // Seed history for autoplay recommendations
                 lastMessage: null
             };
 
@@ -364,9 +364,7 @@ module.exports = {
             if (isPlaylist && allTracks.length > 1) {
                 for (let i = 1; i < allTracks.length; i++) {
                     newQueue.songs.push(allTracks[i]);
-                    newQueue.previousTracks.add(`${allTracks[i].info.author} - ${allTracks[i].info.title}`.toLowerCase());
-                    newQueue.seedTracks.push(allTracks[i]);
-                    if (newQueue.seedTracks.length > 10) newQueue.seedTracks.shift();
+                    await historyTracker.addPlayed(interaction.guild.id, allTracks[i]);
                 }
             }
 

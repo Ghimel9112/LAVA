@@ -3,6 +3,7 @@ const { Client, GatewayIntentBits, Collection } = require('discord.js');
 const { Shoukaku, Connectors } = require('shoukaku');
 const fs = require('fs');
 const path = require('path');
+const cacheStore = require('./services/cacheStore');
 
 // Fail fast — premium sync cannot work without this secret
 if (!process.env.LAVA_BOT_SECRET) {
@@ -10,6 +11,8 @@ if (!process.env.LAVA_BOT_SECRET) {
     process.exit(1);
 }
 
+// Initialize cache store (loads persisted data from JSON)
+cacheStore.connect();
 
 const client = new Client({
     intents: [

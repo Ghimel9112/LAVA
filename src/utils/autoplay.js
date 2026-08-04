@@ -1,265 +1,181 @@
-const { EmbedBuilder } = require('discord.js');
-const premiumService = require('../services/premiumService');
-
+'use strict';
 
 /**
- * Handles autoplay logic.
- * Primary: YouTube Mix/Radio discovery -> cross-platform match (AM -> Deezer -> Tidal -> SoundCloud)
- * Fallback: Direct multi-source search
- * Non-premium users never use YouTube.
- *
- * @param {object} client - The Discord client.
- * @param {object} player - The Shoukaku player.
- * @param {object} track - The track that just finished playing (seed).
- * @param {object} queue - The queue object.
+ * Autoplay Orchestrator — Advanced Recommendation Engine
+ * 
+ * This is the main entry point for autoplay. It coordinates the pipeline:
+ * 
+ *   1. Load guild-specific autoplay configuration
+ *   2. Fetch raw candidates (recommendationFetcher)
+ *   3. Filter out remix/live/unwanted versions (remixLiveFilter)
+ *   4. Filter by genre similarity + language match (genreLanguageFilter)
+ *   5. Exclude recently played tracks (historyTracker)
+ *   6. Score remaining candidates by source preference + genre similarity
+ *   7. Select the top-scored track (deterministic, not random)
+ *   8. Record in history, return track
+ * 
+ * The engine operates in two modes based on guild premium status:
+ *   - PREMIUM:     dzrec:/tdrec: native recommendations → ISRC cross-source
+ *   - NON-PREMIUM: Apple Music/YouTube Music text search fallback
+ * 
+ * YouTube is always the last resort; the engine minimizes YouTube usage
+ * by preferring Deezer → Tidal → Apple Music → SoundCloud.
+ */
+
+const premiumService = require('../services/premiumService');
+const { getGuildConfig, DEFAULTS } = require('../services/autoplay/autoplayConfig');
+const { fetchRecommendations } = require('../services/autoplay/recommendationFetcher');
+const { filterRemixesAndLiveVersions } = require('../services/autoplay/remixLiveFilter');
+const { filterByGenreAndLanguage } = require('../services/autoplay/genreLanguageFilter');
+const historyTracker = require('../services/autoplay/historyTracker');
+
+// ---------------------------------------------------------------------------
+// Source Scoring
+// ---------------------------------------------------------------------------
+
+/**
+ * Score a candidate track based on its source platform.
+ * Higher score = preferred source (Deezer/Tidal > AM > SC > YouTube).
+ * This incentivizes the engine to prefer non-YouTube sources.
+ * 
+ * @param {object} track — Lavalink track with track.info
+ * @returns {number} Score between 0 and 1
+ */
+function sourceScore(track) {
+    const source = (track.info?.sourceName || '').toLowerCase();
+    return DEFAULTS.sourceScores[source] ?? 0.5;
+}
+
+// ---------------------------------------------------------------------------
+// Main Autoplay Handler
+// ---------------------------------------------------------------------------
+
+/**
+ * Handles autoplay: finds the next track to play when the queue is empty.
+ * 
+ * This is the complete pipeline:
+ *   fetch → filter remixes → filter genre/language → filter history → score → select
+ * 
+ * @param {object} client — The Discord client (has client.shoukaku, client.queue)
+ * @param {object} player — The Shoukaku player
+ * @param {object} track — The track that just finished playing (seed)
+ * @param {object} queue — The queue object (has queue.autoplay, etc.)
+ * @returns {Promise<object|null>} The next track to play, or null if no valid candidate found
  */
 async function handleAutoplay(client, player, track, queue) {
     try {
-        if (!track || !track.info || !track.info.identifier) return;
+        if (!track || !track.info || !track.info.identifier) return null;
 
         const node = client.shoukaku.getIdealNode();
-        if (!node) return;
-
-        const guildId = player.guildId;
-        const premium = await premiumService.isPremium(guildId);
-        const ytDisabled = client.youtubeDisabled || false;
-
-        const identifier = track.info.identifier;
-        const author = track.info.author;
-        const title = track.info.title;
-
-        console.log(`[Autoplay] Seed: ${title} by ${author} (${identifier}) | Premium: ${premium}`);
-
-        let candidates = [];
-        const history = queue.previousTracks || new Set();
-
-        const isUnwantedTrack = (candidateTitle, candidateAuthor, seedTitle, seedAuthor) => {
-            const lowerCandidateTitle = (candidateTitle || '').toLowerCase();
-            const lowerCandidateAuthor = (candidateAuthor || '').toLowerCase();
-            const lowerSeedTitle = (seedTitle || '').toLowerCase();
-            const lowerSeedAuthor = (seedAuthor || '').toLowerCase();
-
-            const unwanted = /\b(remix|mix|live|cover|edit|club|extended|instrumental|karaoke|slowed|reverb|sped up|nightcore|bass boosted|radio)\b/i;
-
-            const titleMatch = lowerCandidateTitle.match(unwanted);
-            if (titleMatch) {
-                const word = titleMatch[1].toLowerCase();
-                if (!lowerSeedTitle.includes(word)) {
-                    return true;
-                }
-            }
-
-            if (lowerCandidateAuthor.includes('dj ') && !lowerSeedAuthor.includes('dj ')) {
-                return true;
-            }
-
-            return false;
-        };
-
-        const getCleanTitle = (title) => {
-            return (title || '').toLowerCase()
-                .replace(/\(.*?\)/g, '')
-                .replace(/\[.*?\]/g, '')
-                .replace(/remix/g, '')
-                .replace(/mix/g, '')
-                .replace(/radio edit/g, '')
-                .replace(/official video/g, '')
-                .replace(/official audio/g, '')
-                .replace(/lyric video/g, '')
-                .replace(/[^a-z0-9]/g, '')
-                .trim();
-        };
-
-        const getNewTracks = (tracks) => {
-            return tracks.filter(t => {
-                if (!t || !t.info || t.info.identifier === identifier) return false;
-                if (isUnwantedTrack(t.info.title, t.info.author, title, author)) return false;
-
-                const sig = getBaseSignature(t.info.author, t.info.title);
-                if (history.has(sig)) return false;
-
-                const candidateCleanTitle = getCleanTitle(t.info.title);
-                if (candidateCleanTitle.length > 5) {
-                    for (const pastSig of history) {
-                        const pastTitle = pastSig.split('-').slice(1).join('-');
-                        if (pastTitle.length > 5 && (candidateCleanTitle.includes(pastTitle) || pastTitle.includes(candidateCleanTitle))) {
-                            return false;
-                        }
-                    }
-                }
-
-                return true;
-            });
-        };
-
-        const cleanAuthor = author
-            .replace(/\s*-\s*Topic$/gi, '')
-            .replace(/VEVO$/gi, '')
-            .trim();
-
-        let searchAuthor = cleanAuthor;
-        let searchTitle = title;
-        if (track.info.sourceName === 'soundcloud' && title.includes(' - ')) {
-            const dashIdx = title.indexOf(' - ');
-            const parsedArtist = title.substring(0, dashIdx).trim();
-            const parsedTitle = title.substring(dashIdx + 3).trim();
-            if (parsedArtist.length > 1 && parsedTitle.length > 1) {
-                searchAuthor = parsedArtist;
-                searchTitle = parsedTitle;
-                console.log(`[Autoplay] SoundCloud seed: real artist="${searchAuthor}", title="${searchTitle}" (uploader was "${cleanAuthor}")`);
-            }
-        }
-
-        // -----------------------------------------------------------------
-        // STRATEGY 1: YouTube Mix/Radio discovery -> cross-platform match
-        // Only for premium users. YouTube is used ONLY for discovery.
-        // -----------------------------------------------------------------
-        if (premium && !ytDisabled) {
-            const isYouTube = track.info.sourceName === 'youtube' || track.info.sourceName === 'youtube-music';
-            let mixUrl = null;
-
-            if (isYouTube) {
-                mixUrl = `https://www.youtube.com/watch?v=${identifier}&list=RD${identifier}`;
-                console.log('[Autoplay] Strategy (YouTube Mix - Direct) trying...');
-            } else {
-                console.log('[Autoplay] Strategy (YouTube Equivalent + Mix) trying...');
-                try {
-                    const ytSearch = await node.rest.resolve(`ytsearch:${searchAuthor} - ${searchTitle}`);
-                    const loadType = ytSearch?.loadType ? ytSearch.loadType.toLowerCase() : '';
-                    if (loadType !== 'empty' && loadType !== 'error' && ytSearch?.data?.tracks?.length > 0) {
-                        const ytTrack = ytSearch.data.tracks[0];
-                        mixUrl = `https://www.youtube.com/watch?v=${ytTrack.info.identifier}&list=RD${ytTrack.info.identifier}`;
-                        console.log(`[Autoplay] Found YouTube equivalent: ${ytTrack.info.title} (${ytTrack.info.identifier})`);
-                    }
-                } catch (e) {
-                    console.warn(`[Autoplay] YouTube equivalent search failed: ${e.message}`);
-                }
-            }
-
-            if (mixUrl) {
-                try {
-                    const res = await node.rest.resolve(mixUrl);
-                    const loadType = res?.loadType ? res.loadType.toLowerCase() : '';
-                    if (loadType === 'playlist' && res?.data?.tracks?.length > 0) {
-                        const ytTracks = res.data.tracks.slice(0, 15);
-                        console.log(`[Autoplay] YouTube Mix found ${ytTracks.length} tracks. Finding cross-platform matches...`);
-
-                        const crossPlatformPrefixes = ['amsearch:', 'dzsearch:', 'tidalSearch:', 'scsearch:'];
-
-                        for (const ytTrack of ytTracks) {
-                            if (candidates.length > 0) break;
-                            if (!ytTrack.info || !ytTrack.info.title) continue;
-
-                            const ytTitle = ytTrack.info.title;
-                            const ytAuthor = ytTrack.info.author;
-
-                            for (const prefix of crossPlatformPrefixes) {
-                                if (candidates.length > 0) break;
-                                try {
-                                    const searchRes = await node.rest.resolve(`${prefix}${ytAuthor} - ${ytTitle}`);
-                                    const searchLoadType = searchRes?.loadType ? searchRes.loadType.toLowerCase() : '';
-                                    if (searchLoadType !== 'empty' && searchLoadType !== 'error' && searchRes?.data) {
-                                        let tracks = Array.isArray(searchRes.data) ? searchRes.data : (searchRes.data.tracks || []);
-                                        tracks = getNewTracks(tracks);
-                                        if (tracks.length > 0) {
-                                            candidates = tracks;
-                                            console.log(`[Autoplay] YouTube Mix track "${ytTitle}" matched on ${prefix} -> playing from there.`);
-                                        }
-                                    }
-                                } catch (e) {
-                                    console.warn(`[Autoplay] Cross-platform search ${prefix} failed: ${e.message}`);
-                                }
-                            }
-                        }
-                    }
-                } catch (e) {
-                    console.warn(`[Autoplay] YouTube Mix failed: ${e.message}`);
-                }
-            }
-        }
-
-        // -----------------------------------------------------------------
-        // STRATEGY 2: Direct multi-source search (Fallback)
-        // Non-premium: AM -> Deezer -> Tidal -> SoundCloud
-        // Premium: AM -> Deezer -> Tidal -> SoundCloud -> YouTube Music
-        // -----------------------------------------------------------------
-        if (candidates.length === 0) {
-            const strategies = [
-                { name: 'Apple Music', prefix: 'amsearch:' },
-                { name: 'Deezer', prefix: 'dzsearch:' },
-                { name: 'Tidal', prefix: 'tidalSearch:' },
-                { name: 'SoundCloud', prefix: 'scsearch:' },
-            ];
-            if (premium && !ytDisabled) {
-                strategies.push({ name: 'YouTube Music', prefix: 'ytmsearch:' });
-            }
-
-            console.log(`[Autoplay] Direct search (${strategies.map(s => s.name).join(' -> ')})...`);
-
-            for (const strategy of strategies) {
-                if (candidates.length > 0) break;
-
-                try {
-                    const query = `${strategy.prefix}${searchAuthor} - ${searchTitle}`;
-                    const res = await node.rest.resolve(query);
-
-                    const loadType = res?.loadType ? res.loadType.toLowerCase() : '';
-                    if (loadType !== 'empty' && loadType !== 'error' && res && res.data) {
-                        let tracks = Array.isArray(res.data) ? res.data : (res.data.tracks || []);
-                        let newTracks = getNewTracks(tracks);
-
-                        if (newTracks.length > 0) {
-                            candidates = newTracks;
-                            console.log(`[Autoplay] Strategy (${strategy.name}) found ${candidates.length} new candidates.`);
-                        }
-                    }
-                } catch (e) {
-                    console.warn(`[Autoplay] Strategy (${strategy.name}) failed: ${e.message}`);
-                }
-            }
-        }
-
-        // -----------------------------------------------------------------
-        // STRATEGY 3: Artist Search (Last Resort)
-        // -----------------------------------------------------------------
-        if (candidates.length === 0) {
-            const artistPrefixes = ['amsearch:', 'dzsearch:', 'tidalSearch:', 'scsearch:'];
-            if (premium && !ytDisabled) artistPrefixes.push('ytmsearch:');
-
-            for (const prefix of artistPrefixes) {
-                if (candidates.length > 0) break;
-                try {
-                    const res = await node.rest.resolve(`${prefix}${searchAuthor}`);
-                    const loadType = res?.loadType ? res.loadType.toLowerCase() : '';
-                    if (loadType !== 'empty' && loadType !== 'error' && res && res.data) {
-                        let tracks = Array.isArray(res.data) ? res.data : (res.data.tracks || []);
-                        let newTracks = getNewTracks(tracks);
-                        if (newTracks.length > 0) {
-                            candidates = newTracks;
-                            console.log(`[Autoplay] Strategy (Artist - ${prefix}) found ${candidates.length} new candidates.`);
-                        }
-                    }
-                } catch (e) {
-                    console.warn(`[Autoplay] Strategy (Artist - ${prefix}) failed: ${e.message}`);
-                }
-            }
-        }
-
-        // -----------------------------------------------------------------
-        // SELECTION & PLAY
-        // -----------------------------------------------------------------
-        if (candidates.length === 0) {
-            console.log('[Autoplay] All strategies failed. Could not find a track.');
+        if (!node) {
+            console.warn('[Autoplay] No Lavalink node available.');
             return null;
         }
 
-        const valid = candidates;
-        const randomTrack = valid[Math.floor(Math.random() * valid.length)];
+        const guildId = player.guildId;
+        const isPremium = await premiumService.isPremium(guildId);
+        const config = await getGuildConfig(guildId);
 
-        const sig = getBaseSignature(randomTrack.info.author, randomTrack.info.title);
-        queue.previousTracks.add(sig);
+        console.log(`[Autoplay] ══════════════════════════════════════════════`);
+        console.log(`[Autoplay] Seed: "${track.info.title}" by ${track.info.author}`);
+        console.log(`[Autoplay] Source: ${track.info.sourceName} | ISRC: ${track.info.isrc || 'none'}`);
+        console.log(`[Autoplay] Mode: ${isPremium ? 'PREMIUM (dzrec/tdrec)' : 'NON-PREMIUM (search)'}`);
 
-        return randomTrack;
+        // ─────────────────────────────────────────────────────────────────
+        // STEP 1: Fetch raw candidates
+        // ─────────────────────────────────────────────────────────────────
+        let candidates = await fetchRecommendations(node, track, isPremium);
+
+        if (candidates.length === 0) {
+            console.log('[Autoplay] No candidates found from any source.');
+            return null;
+        }
+
+        // Remove the seed track itself from candidates
+        candidates = candidates.filter(c =>
+            c && c.info && c.info.identifier !== track.info.identifier
+        );
+
+        console.log(`[Autoplay] Step 1 (fetch): ${candidates.length} raw candidates`);
+
+        // ─────────────────────────────────────────────────────────────────
+        // STEP 2: Filter remixes, live versions, and unwanted variants
+        // ─────────────────────────────────────────────────────────────────
+        candidates = filterRemixesAndLiveVersions(track, candidates, config.versionBlocklist);
+        console.log(`[Autoplay] Step 2 (remix/live filter): ${candidates.length} candidates remain`);
+
+        if (candidates.length === 0) {
+            console.log('[Autoplay] All candidates rejected by remix/live filter.');
+            return null;
+        }
+
+        // ─────────────────────────────────────────────────────────────────
+        // STEP 3: Exclude recently played tracks (history dedup)
+        // ─────────────────────────────────────────────────────────────────
+        candidates = await historyTracker.filterPlayed(guildId, candidates);
+        console.log(`[Autoplay] Step 3 (history dedup): ${candidates.length} candidates remain`);
+
+        if (candidates.length === 0) {
+            console.log('[Autoplay] All candidates rejected by history dedup.');
+            return null;
+        }
+
+        // ─────────────────────────────────────────────────────────────────
+        // STEP 4: Filter by genre similarity and language match
+        // Only if Last.fm API key is configured.
+        // ─────────────────────────────────────────────────────────────────
+        if (config.lastfmApiKey) {
+            candidates = await filterByGenreAndLanguage(track, candidates, config);
+            console.log(`[Autoplay] Step 4 (genre/lang filter): ${candidates.length} candidates remain`);
+
+            if (candidates.length === 0) {
+                console.log('[Autoplay] All candidates rejected by genre/language filter.');
+                // Don't give up — re-fetch without genre filtering as a safety net
+                console.log('[Autoplay] Retrying without genre filter...');
+                candidates = await fetchRecommendations(node, track, isPremium);
+                candidates = candidates.filter(c =>
+                    c && c.info && c.info.identifier !== track.info.identifier
+                );
+                candidates = filterRemixesAndLiveVersions(track, candidates, config.versionBlocklist);
+                candidates = await historyTracker.filterPlayed(guildId, candidates);
+            }
+        } else {
+            console.log('[Autoplay] Step 4 (genre/lang filter): SKIPPED (no LASTFM_API_KEY)');
+        }
+
+        if (candidates.length === 0) {
+            console.log('[Autoplay] All candidates were recently played. No new track found.');
+            return null;
+        }
+
+        // ─────────────────────────────────────────────────────────────────
+        // STEP 5: Score and select the best candidate
+        // Uses source preference (Deezer/Tidal > AM > SC > YouTube)
+        // instead of random selection for more consistent quality.
+        // ─────────────────────────────────────────────────────────────────
+        const scored = candidates.map(c => ({
+            track: c,
+            score: sourceScore(c),
+        }));
+
+        // Sort by score descending — best source wins
+        scored.sort((a, b) => b.score - a.score);
+
+        // If there are multiple candidates with the same top score,
+        // pick one randomly to add variety
+        const topScore = scored[0].score;
+        const topCandidates = scored.filter(s => s.score === topScore);
+        const selected = topCandidates[Math.floor(Math.random() * topCandidates.length)].track;
+
+        console.log(`[Autoplay] ✓ Selected: "${selected.info.title}" by ${selected.info.author} (source: ${selected.info.sourceName}, score: ${topScore.toFixed(2)})`);
+        console.log(`[Autoplay] ══════════════════════════════════════════════`);
+
+        // ─────────────────────────────────────────────────────────────────
+        // STEP 6: Record in history
+        // ─────────────────────────────────────────────────────────────────
+        await historyTracker.addPlayed(guildId, selected, config.historySize);
+
+        return selected;
 
     } catch (error) {
         console.error('[Autoplay] Critical error:', error);
@@ -267,24 +183,4 @@ async function handleAutoplay(client, player, track, queue) {
     }
 }
 
-function getBaseSignature(author, title) {
-    const cleanTitle = (title || '').toLowerCase()
-        .replace(/\(.*?\)/g, '')
-        .replace(/\[.*?\]/g, '')
-        .replace(/remix/g, '')
-        .replace(/mix/g, '')
-        .replace(/radio edit/g, '')
-        .replace(/official video/g, '')
-        .replace(/official audio/g, '')
-        .replace(/lyric video/g, '')
-        .replace(/[^a-z0-9]/g, '')
-        .trim();
-    
-    const cleanAuthor = (author || '').toLowerCase()
-        .replace(/[^a-z0-9]/g, '')
-        .trim();
-    
-    return `${cleanAuthor}-${cleanTitle}`;
-}
-
-module.exports = { handleAutoplay, getBaseSignature };
+module.exports = { handleAutoplay };

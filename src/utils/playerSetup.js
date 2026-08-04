@@ -1,5 +1,6 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, MessageFlags } = require('discord.js');
-const { handleAutoplay, getBaseSignature } = require('./autoplay');
+const { handleAutoplay } = require('./autoplay');
+const historyTracker = require('../services/autoplay/historyTracker');
 
 const exceptionState = new Map();
 const COOLDOWN_MS = 5000;
@@ -214,12 +215,9 @@ async function attachPlayerEvents(player, interaction, guildId, isPremium, node)
         if (currentQueue && currentQueue.player) {
             const finishedTrack = currentQueue.songs[0];
             if (finishedTrack) {
-                const sig = getBaseSignature(finishedTrack.info.author, finishedTrack.info.title);
-                currentQueue.previousTracks.add(sig);
-
-                if (!currentQueue.seedTracks) currentQueue.seedTracks = [];
-                currentQueue.seedTracks.push(finishedTrack);
-                if (currentQueue.seedTracks.length > 10) currentQueue.seedTracks.shift();
+                // Record the finished track in history
+                // This replaces the old Set-based previousTracks approach
+                await historyTracker.addPlayed(guildId, finishedTrack);
             }
 
             if (currentQueue.loop === 'track') {

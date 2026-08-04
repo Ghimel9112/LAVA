@@ -65,10 +65,14 @@ logging:
 
 plugins:
   lavasrc:
-    providers: # Used by LavaSrc to resolve a playable stream for mirror sources (Apple Music, Tidal, Spotify)
-      - "dzsearch:%QUERY%"      # Deezer first — direct stream, no YouTube dependency, most reliable
-      - "ytsearch:\"%ISRC%\""  # YouTube by ISRC (precise match, ignored if track has no ISRC)
-      - "ytsearch:%QUERY%"      # YouTube by query (last resort fallback)
+    providers: # Minimized YouTube — ISRC lookups first, then text search, YouTube absolute last resort
+      - "dzisrc:%ISRC%"          # Deezer by ISRC (exact match, highest priority, direct stream)
+      - "dzsearch:%QUERY%"       # Deezer by text query
+      - "tidalSearch:%QUERY%"    # Tidal by text query (also resolves ISRC internally)
+      - "amsearch:%QUERY%"       # Apple Music by text query
+      - "scsearch:%QUERY%"       # SoundCloud by text query
+      - "ytsearch:\"%ISRC%\""    # YouTube by ISRC (last resort, only if nothing else matched)
+      - "ytsearch:%QUERY%"       # YouTube by text (absolute last resort)
     sources:
       spotify: true        # Enabled to allow Spotify links
       applemusic: true     # Apple Music (mirrors via YouTube)
