@@ -372,9 +372,6 @@ async function fetchMultiSourceSearch(node, seedTrack, isPremium) {
     // by the history filter. Searching for the artist returns a pool of tracks.
     if (artist) {
         for (const provider of providers) {
-            // We want a good pool of candidates. If a provider returns less than 10, keep checking others and append.
-            if (candidates.length >= 10) break;
-
             console.log(`[RecommendationFetcher] Multi-source: trying ${provider.name} artist search for "${artist}"`);
             const results = await resolveSearch(node, `${provider.prefix}${artist}`);
 
@@ -390,8 +387,6 @@ async function fetchMultiSourceSearch(node, seedTrack, isPremium) {
     // ── Title Fallback ───────────────────────────────────────────────────
     if (candidates.length < 5 && title) {
         for (const provider of providers) {
-            if (candidates.length >= 10) break;
-
             console.log(`[RecommendationFetcher] Multi-source: fallback title search for "${title}"`);
             const results = await resolveSearch(node, `${provider.prefix}${title}`);
 

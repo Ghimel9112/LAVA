@@ -109,6 +109,38 @@ function setupCollector(message, player, queue, interaction, guildId) {
                 case 'autoplay':
                     queue.autoplay = !queue.autoplay;
                     await i.editReply({ components: createControlButtons(queue) });
+                    
+                    // If autoplay was just enabled, and the queue is completely idle (0 or 1 track playing),
+                    // preload the next track immediately.
+                    if (queue.autoplay && queue.songs.length <= 1) {
+                        // Use the currently playing track, or the last track in history if completely idle
+                        let seedTrack = queue.songs[0];
+                        if (!seedTrack) {
+                            const played = await historyTracker.getPlayed(guildId);
+                            seedTrack = played[0];
+                        }
+                        
+                        if (seedTrack && !queue.isHandlingException) {
+                            queue.isHandlingException = true;
+                            try {
+                                const newTrack = await handleAutoplay(interaction.client, player, seedTrack, queue);
+                                if (newTrack) {
+                                    queue.songs.push(newTrack);
+                                    // If nothing was playing, start it instantly
+                                    if (queue.songs.length === 1) {
+                                        queue.player.playTrack({ encodedTrack: newTrack.encoded });
+                                    } else {
+                                        const embed = new EmbedBuilder().setColor('Green').setDescription(`🔮 Autoplay queued: **${newTrack.info.title}**`);
+                                        await i.followUp({ embeds: [embed], flags: MessageFlags.Ephemeral });
+                                    }
+                                }
+                            } catch (e) {
+                                console.error('[Autoplay] Preload error:', e);
+                            } finally {
+                                queue.isHandlingException = false;
+                            }
+                        }
+                    }
                     break;
                 case 'shuffle':
                     if (queue.songs.length > 2) {
