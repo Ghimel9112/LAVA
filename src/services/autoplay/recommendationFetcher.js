@@ -367,29 +367,38 @@ async function fetchMultiSourceSearch(node, seedTrack, isPremium) {
 
     let candidates = [];
 
-    // ── Text search across all providers ─────────────────────────────────
-    for (const provider of providers) {
-        if (candidates.length > 0) break;
+    // ── Artist Search (Best for Fallback) ────────────────────────────────
+    // Searching for the exact track only returns 1 result which will be blocked
+    // by the history filter. Searching for the artist returns a pool of tracks.
+    if (artist) {
+        for (const provider of providers) {
+            // We want a good pool of candidates. If a provider returns less than 10, keep checking others and append.
+            if (candidates.length >= 10) break;
 
-        const query = `${provider.prefix}${artist} - ${title}`;
-        console.log(`[RecommendationFetcher] Multi-source: trying ${provider.name}...`);
-        const results = await resolveSearch(node, query);
+            console.log(`[RecommendationFetcher] Multi-source: trying ${provider.name} artist search for "${artist}"`);
+            const results = await resolveSearch(node, `${provider.prefix}${artist}`);
 
-        if (results.length > 0) {
-            candidates = results;
-            console.log(`[RecommendationFetcher] Multi-source: ${provider.name} found ${results.length} candidates.`);
+            if (results.length > 0) {
+                candidates.push(...results);
+                // Deduplicate
+                candidates = Array.from(new Map(candidates.map(c => [c.info.identifier, c])).values());
+                console.log(`[RecommendationFetcher] Multi-source: ${provider.name} found ${results.length} candidates. Total pool: ${candidates.length}`);
+            }
         }
     }
 
-    // ── Artist-only fallback ─────────────────────────────────────────────
-    if (candidates.length === 0 && artist) {
+    // ── Title Fallback ───────────────────────────────────────────────────
+    if (candidates.length < 5 && title) {
         for (const provider of providers) {
-            if (candidates.length > 0) break;
+            if (candidates.length >= 10) break;
 
-            const results = await resolveSearch(node, `${provider.prefix}${artist}`);
+            console.log(`[RecommendationFetcher] Multi-source: fallback title search for "${title}"`);
+            const results = await resolveSearch(node, `${provider.prefix}${title}`);
+
             if (results.length > 0) {
-                candidates = results;
-                console.log(`[RecommendationFetcher] Multi-source artist fallback: ${provider.name} found ${results.length} candidates.`);
+                candidates.push(...results);
+                candidates = Array.from(new Map(candidates.map(c => [c.info.identifier, c])).values());
+                console.log(`[RecommendationFetcher] Multi-source: ${provider.name} title search found ${results.length} candidates.`);
             }
         }
     }
