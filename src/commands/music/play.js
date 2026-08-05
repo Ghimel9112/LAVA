@@ -311,11 +311,19 @@ module.exports = {
 
         const queue = interaction.client.queue.get(interaction.guild.id);
         if (queue) {
+            const wasEmpty = queue.songs.length === 0;
+
             // Add all tracks to existing queue
             for (const t of allTracks) {
                 queue.songs.push(t);
                 // Record in history for autoplay dedup
                 await historyTracker.addPlayed(interaction.guild.id, t);
+            }
+
+            if (wasEmpty) {
+                // If the queue was empty, the player is currently sitting idle (e.g. autoplay ran out of songs).
+                // We must explicitly start playing the newly added track.
+                await queue.player.playTrack({ encodedTrack: queue.songs[0].encoded });
             }
 
             const embed = new EmbedBuilder().setColor('Red').setDescription(
