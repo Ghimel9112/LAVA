@@ -311,6 +311,10 @@ async function attachPlayerEvents(player, interaction, guildId, isPremium, node)
             } catch (e) {
                 console.error('Failed to send disconnect message:', e);
             }
+            
+            // Clear autoplay history so the next session starts fresh
+            try { await historyTracker.clearHistory(guildId); } catch(e) { console.error('Failed to clear history:', e); }
+            
             interaction.client.queue.delete(guildId);
         }
     });
