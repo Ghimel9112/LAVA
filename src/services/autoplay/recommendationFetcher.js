@@ -427,9 +427,12 @@ async function fetchRecommendations(node, seedTrack, isPremium) {
         // Try Deezer recommendations first (best catalog, direct streaming)
         candidates = await fetchDeezerRecommendations(node, seedTrack);
 
-        // If Deezer returned nothing, try Tidal recommendations
-        if (candidates.length === 0) {
-            candidates = await fetchTidalRecommendations(node, seedTrack);
+        // If Deezer returned too few candidates, supplement with Tidal recommendations
+        if (candidates.length < 15) {
+            const tidalTracks = await fetchTidalRecommendations(node, seedTrack);
+            candidates.push(...tidalTracks);
+            // Deduplicate by identifier
+            candidates = Array.from(new Map(candidates.map(c => [c.info.identifier, c])).values());
         }
 
         // Cross-source resolve: ensure candidates are on preferred platforms
@@ -443,9 +446,12 @@ async function fetchRecommendations(node, seedTrack, isPremium) {
     }
 
     // ── Shared fallback: multi-source text search ────────────────────────
-    // Used when platform-specific recommendations return nothing
-    if (candidates.length === 0) {
-        candidates = await fetchMultiSourceSearch(node, seedTrack, isPremium);
+    // Used when platform-specific recommendations return too few tracks
+    if (candidates.length < 10) {
+        const fallbackTracks = await fetchMultiSourceSearch(node, seedTrack, isPremium);
+        candidates.push(...fallbackTracks);
+        // Deduplicate by identifier
+        candidates = Array.from(new Map(candidates.map(c => [c.info.identifier, c])).values());
     }
 
     console.log(`[RecommendationFetcher] Total raw candidates: ${candidates.length}`);
