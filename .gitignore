@@ -3,3 +3,4 @@ node_modules/
 premium_guilds.json
 *.log
 kickbacks.vsix
+src/data/
