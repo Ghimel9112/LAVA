@@ -82,10 +82,9 @@ const DEFAULTS = {
     // ISRC-based lookups are always tried first within each source.
     // YouTube/YouTube Music are strictly last-resort.
     searchProviders: [
-        { name: 'Deezer',       prefix: 'dzsearch:' },
-        { name: 'Tidal',        prefix: 'tidalSearch:' },
         { name: 'Apple Music',  prefix: 'amsearch:' },
-        { name: 'SoundCloud',   prefix: 'scsearch:' },
+        { name: 'Deezer',       prefix: 'dzsearch:' },
+        { name: 'Tidal',        prefix: 'tidalSearch:' }
     ],
 
     // YouTube Music is only appended for premium users as absolute last resort
