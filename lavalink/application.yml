@@ -74,19 +74,14 @@ plugins:
       - "ytsearch:\"%ISRC%\""    # YouTube by ISRC (last resort, only if nothing else matched)
       - "ytsearch:%QUERY%"       # YouTube by text (absolute last resort)
     sources:
-      spotify: true        # Enabled to allow Spotify links
+      spotify: false       # Disabled — requires Spotify Premium developer account
       applemusic: true     # Apple Music (mirrors via YouTube)
       deezer: true         # Deezer (direct stream — no YouTube dependency)
       tidal: true          # Tidal (mirrors via YouTube, premium-quality catalog)
       yandexmusic: false
       flow: false
       youtube: false
-    spotify:
-      clientId: "ec3cd0ceb75a4170908e7d9f1dc45b6a"
-      clientSecret: "a8421e57a937475c813c81103b7271e5"
-      countryCode: "US"
-      playlistLoadLimit: 6
-      albumLoadLimit: 6
+    # spotify: disabled — requires a Spotify Premium account on the developer app owner
     deezer:
       # ┌─────────────────────────────────────────────────────────────────┐
       # │  FILL IN THESE VALUES BEFORE RESTARTING LAVALINK               │

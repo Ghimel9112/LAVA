@@ -72,7 +72,7 @@ module.exports = {
         if (interaction.client.youtubeDisabled && isYouTubeUrl) {
             const embed = new EmbedBuilder()
                 .setColor('Red')
-                .setDescription('⚠️ YouTube sources are temporarily disabled. The bot requires an update that is not yet available. Please use a song name, Spotify link, or SoundCloud link instead.');
+                .setDescription('⚠️ YouTube sources are temporarily disabled. The bot requires an update that is not yet available. Please use a song name, Apple Music link, or SoundCloud link instead.');
             return interaction.editReply({ embeds: [embed] });
         }
 
@@ -160,7 +160,7 @@ module.exports = {
         // If not premium OR if premium search failed,
         // Fallback to Safe Mode (Apple Music priority)
         if (!searchResult) {
-            // Check if this is a Spotify/platform playlist URL (try direct resolve first)
+            // Check if this is a platform URL (try direct resolve first)
             if (/^https?:\/\//.test(query)) {
                 const directRes = await node.rest.resolve(query);
                 const directLoadType = directRes?.loadType ? directRes.loadType.toLowerCase() : '';
