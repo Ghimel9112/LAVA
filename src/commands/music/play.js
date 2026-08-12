@@ -76,6 +76,15 @@ module.exports = {
             return interaction.editReply({ embeds: [embed] });
         }
 
+        // Block Spotify URLs — Spotify requires a Premium developer account which is not available
+        const isSpotifyUrl = /^https?:\/\/(open\.spotify\.com|spotify\.com)/.test(query);
+        if (isSpotifyUrl) {
+            const embed = new EmbedBuilder()
+                .setColor('Red')
+                .setDescription('❌ Spotify links are not supported.\n\nPlease search by **song name**, or use an **Apple Music**, **Deezer**, or **Tidal** link instead.');
+            return interaction.editReply({ embeds: [embed] });
+        }
+
         // 1. RESOLVE SEARCH
         let searchResult;
         const isPremium = await premiumService.isPremium(interaction.guild.id);
