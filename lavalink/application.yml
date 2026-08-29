@@ -118,9 +118,6 @@ plugins:
     oauth:
       enabled: true
       # refreshToken: "..." # Empty or commented out to trigger new auth flow
-    pot:
-      # token: "..." # Regenerate using https://github.com/lavalink-devs/youtube-source#po-token
-      # visitorData: "..."
     pipedInstances:
       - "https://piped.api.kavin.rocks"
       - "https://piped.mha.fi"
