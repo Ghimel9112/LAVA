@@ -117,7 +117,7 @@ plugins:
       - WEB
     oauth:
       enabled: true
-      # refreshToken: "..." # Empty or commented out to trigger new auth flow
+      # refreshToken: "" # Add your token here
     pipedInstances:
       - "https://piped.api.kavin.rocks"
       - "https://piped.mha.fi"
