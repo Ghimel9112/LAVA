@@ -103,7 +103,7 @@ plugins:
       # │    any API request → copy the Bearer token from Authorization   │
       # │    header (the part after "Bearer ").                          │
       # └─────────────────────────────────────────────────────────────────┘
-      token: "eyJraWQiOiJ2OU1GbFhqWSIsImFsZyI6IkVTMjU2In0.eyJ0eXBlIjoibzJfYWNjZXNzIiwidWlkIjoyMDg5MTE3ODcsInNjb3BlIjoid191c3Igcl91c3IiLCJnVmVyIjowLCJzVmVyIjowLCJjaWQiOjgwNDksImN1ayI6IjliOTE3YjljLTFlZDUtNDE4Yy1hMzNmLTIzMTMwNGZhY2YzZSIsImNjIjoiUk8iLCJhdCI6IklOVEVSTkFMIiwiZXhwIjoxNzg1MjU1NTYyLCJzaWQiOiI3ODBkMWY4Ni1mYTA1LTRmYTEtOWQ4Zi1jMjg1YWIxZGJkZDAiLCJpc3MiOiJodHRwczovL2F1dGgudGlkYWwuY29tL3YxIn0.mgNzWvdftLfAdPEA_u2R7RFAfTQ2Vtmg2gXJs4I8NQT1jI9gt0-BQ9I4qwkHrADKugyj1HxZBK8xJ65Xm0GO-g"
+      token: "YOUR_TIDAL_BEARER_TOKEN_HERE"
       countryCode: "US"
       searchLimit: 6
   youtube:
@@ -117,7 +117,7 @@ plugins:
       - WEB
     oauth:
       enabled: true
-      # refreshToken: "" # Add your token here
+      refreshToken: "YOUR_YOUTUBE_OAUTH_REFRESH_TOKEN_HERE"
     pipedInstances:
       - "https://piped.api.kavin.rocks"
       - "https://piped.mha.fi"

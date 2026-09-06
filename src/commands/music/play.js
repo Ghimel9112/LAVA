@@ -91,8 +91,7 @@ module.exports = {
         console.log(`[DEBUG] Guild: ${interaction.guild.id}, Premium: ${isPremium}, Query: ${query}`);
 
         if (isPremium) {
-            // premium: try direct resolution first for URLs (Spotify, SoundCloud, etc.)
-            // For text queries, prioritize Apple Music to avoid YouTube blocks
+            // premium: try direct resolution first for URLs
             const isUrl = /^https?:\/\//.test(query);
             
             if (isUrl) {
@@ -104,10 +103,6 @@ module.exports = {
                 const rawData = res?.data || res?.tracks; // v4 uses data, v3 uses tracks
 
                 if (rawData) {
-                    // If it's a playlist or a direct track URL
-                    // v4: loadType='playlist' or 'search', data is { tracks: [...] } or [...]
-                    // v3: loadType='PLAYLIST_LOADED', tracks is [...]
-
                     if (loadType === 'playlist' || loadType === 'playlist_loaded') {
                         // PLAYLIST: queue ALL tracks
                         let tracks = [];
@@ -117,7 +112,6 @@ module.exports = {
                             tracks = rawData.tracks;
                         }
 
-                        // Filter to only valid tracks
                         tracks = tracks.filter(t => t && t.info && t.info.title);
 
                         if (tracks.length > 0) {
@@ -125,8 +119,6 @@ module.exports = {
                             searchResult = { loadType: 'playlist', data: tracks[0], allTracks: tracks, playlistName };
                         }
                     } else if (loadType === 'track' || loadType === 'track_loaded' || loadType === 'short') {
-                        // v4: data is track object
-                        // v3: tracks is array of 1 track
                         if (Array.isArray(rawData)) {
                             searchResult = { loadType: 'track', data: rawData[0] };
                         } else {
@@ -135,32 +127,87 @@ module.exports = {
                     }
                 }
             } else {
-                // Text query: try Apple Music -> Deezer -> Tidal -> YouTube (minimize YouTube)
-                const strategies = [
+                // Text query for premium guilds:
+                // Collect candidates from ALL safe sources first, score them, and only
+                // fall back to YouTube if no safe source found anything.
+                // YouTube is NEVER used as an initial play source for text queries —
+                // only when the user explicitly sends a YouTube URL.
+                const safeSources = [
                     { name: 'Apple Music', prefix: 'amsearch:' },
                     { name: 'Deezer', prefix: 'dzsearch:' },
                     { name: 'Tidal', prefix: 'tidalSearch:' },
+                    { name: 'SoundCloud', prefix: 'scsearch:' },
                 ];
-                if (!interaction.client.youtubeDisabled) {
-                    strategies.push({ name: 'YouTube', prefix: 'ytsearch:' });
-                }
 
-                for (const strategy of strategies) {
-                    if (searchResult) break;
+                // Parse artist/title from "artist - title" format for better scoring
+                let premSearchTitle = query;
+                let premSearchAuthor = '';
+                const premDashSplit = query.match(/^(.+?)\s*[-–—]\s*(.+)$/);
+                if (premDashSplit) {
+                    premSearchAuthor = premDashSplit[1].trim();
+                    premSearchTitle = premDashSplit[2].trim();
+                }
+                const premAudioQuery = (premSearchTitle && premSearchAuthor)
+                    ? `${premSearchTitle} ${premSearchAuthor}`
+                    : premSearchTitle;
+
+                let premCandidates = [];
+
+                for (const src of safeSources) {
                     try {
-                        const res = await node.rest.resolve(`${strategy.prefix}${query}`);
+                        const res = await node.rest.resolve(`${src.prefix}${premAudioQuery}`);
                         const loadType = res?.loadType ? res.loadType.toLowerCase() : '';
                         const rawData = res?.data || res?.tracks;
                         if (rawData && loadType !== 'empty' && loadType !== 'error') {
                             let tracks = Array.isArray(rawData) ? rawData : (rawData.tracks || []);
                             tracks = tracks.filter(t => t && t.info && t.info.title);
                             if (tracks.length > 0) {
-                                searchResult = { loadType: 'track', data: tracks[0] };
-                                console.log(`[DEBUG] Premium ${strategy.name} match: ${tracks[0].info.title}`);
+                                premCandidates.push(...tracks.slice(0, 10));
+                                console.log(`[Search] Premium ${src.name} found ${tracks.length} candidates`);
                             }
                         }
                     } catch (e) {
-                        console.warn(`[DEBUG] Premium ${strategy.name} search failed: ${e.message}`);
+                        console.warn(`[DEBUG] Premium ${src.name} search failed: ${e.message}`);
+                    }
+                }
+
+                if (premCandidates.length > 0) {
+                    // Score candidates the same way as the safe-mode path
+                    const scored = premCandidates
+                        .filter(t => !isRemixOrLive(t.info.title, query))
+                        .map(t => {
+                            const titleScore = matchScore(t.info.title, premSearchTitle || query);
+                            const artistScore = premSearchAuthor ? matchScore(t.info.author, premSearchAuthor) : 0;
+                            const total = (titleScore * 0.7) + (artistScore * 0.3);
+                            return { track: t, score: total };
+                        })
+                        .sort((a, b) => b.score - a.score);
+
+                    if (scored.length > 0 && scored[0].score >= 0.3) {
+                        searchResult = { loadType: 'track', data: scored[0].track };
+                        console.log(`[DEBUG] Premium best match: "${scored[0].track.info.title}" by ${scored[0].track.info.author} (score: ${scored[0].score.toFixed(2)}, source: ${scored[0].track.info.sourceName})`);
+                    } else if (premCandidates.length > 0) {
+                        // Low confidence — take top candidate anyway
+                        searchResult = { loadType: 'track', data: premCandidates[0] };
+                        console.log(`[DEBUG] Premium low-confidence match: "${premCandidates[0].info.title}" (source: ${premCandidates[0].info.sourceName})`);
+                    }
+                } else if (!interaction.client.youtubeDisabled) {
+                    // No safe source found anything — YouTube is the last resort for premium guilds
+                    console.log(`[DEBUG] Premium: No safe-source results for "${query}", trying YouTube as last resort`);
+                    try {
+                        const ytRes = await node.rest.resolve(`ytsearch:${premAudioQuery}`);
+                        const ytLoadType = ytRes?.loadType ? ytRes.loadType.toLowerCase() : '';
+                        const ytRaw = ytRes?.data || ytRes?.tracks;
+                        if (ytRaw && ytLoadType !== 'empty' && ytLoadType !== 'error') {
+                            let ytTracks = Array.isArray(ytRaw) ? ytRaw : (ytRaw.tracks || []);
+                            ytTracks = ytTracks.filter(t => t && t.info && t.info.title && !isRemixOrLive(t.info.title, query));
+                            if (ytTracks.length > 0) {
+                                searchResult = { loadType: 'track', data: ytTracks[0] };
+                                console.log(`[DEBUG] Premium YouTube last-resort match: ${ytTracks[0].info.title}`);
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('[DEBUG] Premium YouTube last-resort search failed:', e.message);
                     }
                 }
             }
